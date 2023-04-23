@@ -40,6 +40,13 @@ pub const Side = enum {
     right,
 };
 
+pub fn side_mult(side: Side) f16 {
+    return switch (side) {
+        .left => 1,
+        .right => -1
+    };
+}
+
 pub const Paddle_button_action = enum {
     lunge,
     catchback,
@@ -54,36 +61,40 @@ pub const Paddle = struct {
     y: f16,
     vy: f16,
     ay: f16,
-    anim: *Paddle_Anim,
+    anim: Paddle_Anim,
     side: Side,
 };
 
 
 pub const paddle_start_y: f16 = @intToFloat(f16, w4.SCREEN_SIZE) / 2.0;
 
-pub var p1 = Paddle{
-    .normal_x = w4.SCREEN_SIZE - gc.PADDLE_DIST_FROM_SIDES - gr.paddle.width,
-    .x = w4.SCREEN_SIZE - gc.PADDLE_DIST_FROM_SIDES - gr.paddle.width,
-    .x_int = 0,
-    .y_int = 0,
-    .y = paddle_start_y,
-    .vy = 0,
-    .ay = 0,
-    .anim = &p1_anim,
-    .side = Side.left,
-};
+pub fn init_paddle(side: Side) Paddle {
+    var which_x:f16 = switch(side) {
+        .right => w4.SCREEN_SIZE - gc.PADDLE_DIST_FROM_SIDES - gr.paddle.width,
+        .left => gc.PADDLE_DIST_FROM_SIDES
+    };
+    return Paddle{
+        .normal_x = which_x,
+        .x = which_x,
+        .x_int = 0,
+        .y_int = 0,
+        .y = paddle_start_y,
+        .vy = 0,
+        .ay = 0,
+        .anim = Paddle_Anim{
+            .current_state = Paddle_states.normal,
+            .current_sprite_data = &gr.paddle,
+            .current_image = &gr.paddle_image,
+            .anim_timer = 0,
+        },
+        .side = side,
+    };
+}
 
-pub var p2 = Paddle{
-    .normal_x = gc.PADDLE_DIST_FROM_SIDES,
-    .x = gc.PADDLE_DIST_FROM_SIDES,
-    .y_int = 0,
-    .x_int = 0,
-    .y = paddle_start_y,
-    .vy = 0,
-    .ay = 0,
-    .anim = &p2_anim,
-    .side = Side.right,
-};
+pub var p1 = init_paddle(Side.left);
+pub var p2 = init_paddle(Side.right);
+pub var p3 = init_paddle(Side.left);
+pub var p4 = init_paddle(Side.right);
 
 pub const Paddle_dirs = enum { up, down, no_move };
 
@@ -149,33 +160,20 @@ pub fn animate_paddle(paddle: *Paddle, dir: Paddle_dirs, button_action: Paddle_b
             
             switch (button_action) {
                 Paddle_button_action.catchback => {
-                    paddle.x = switch(paddle.side) {
-                        Side.left => paddle.normal_x + gc.PADDLE_BOUNCEBACK_DIST,
-                        Side.right => paddle.normal_x - gc.PADDLE_BOUNCEBACK_DIST,
-                    };
+                    paddle.x = paddle.normal_x + -1 * side_mult(paddle.side) * gc.PADDLE_BOUNCEBACK_DIST;
                     paddle.anim.current_state = Paddle_states.catchback;
                 },
                 Paddle_button_action.lunge => {
                     // sm.spawn_smoke(paddle.x, paddle.y + @intToFloat(f16, paddle.anim.current_sprite_data.height) + gc.SMOKE_OFFSET_Y, 0, 2 * gc.SMOKE_START_VEL);
                     // sm.spawn_smoke(paddle.x, paddle.y - gc.SMOKE_OFFSET_Y, 0, -2 * gc.SMOKE_START_VEL);
 
-                    var vx_mult: f16 = 0;
-                    switch(paddle.side) {
-                        Side.left => vx_mult = 0.3,
-                        Side.right => vx_mult = -0.3,
-                    }
-                    var x_offset: f16 = 0;
-                    switch(paddle.side) {
-                        Side.right => x_offset = 0 * @intToFloat(f16, paddle.anim.current_sprite_data.width),
-                        Side.left => x_offset = 0.6 * @intToFloat(f16, paddle.anim.current_sprite_data.width),
-                    }
+  
+                    var vx_mult: f16 = side_mult(paddle.side) * -1 * gc.SMOKE_VX_OFFSET_MULT;
+                    var x_offset: f16 = (gc.SMOKE_PADDLE_OFFSET_MULT/2.0 + gc.SMOKE_VX_OFFSET_MULT/2.0 * side_mult(paddle.side) * -1) * 1 * @intToFloat(f16, paddle.anim.current_sprite_data.width);
                     sm.spawn_smoke(paddle.x + x_offset, paddle.y + @intToFloat(f16, paddle.anim.current_sprite_data.height) / 2 + gc.SMOKE_OFFSET_Y, vx_mult * gc.SMOKE_START_VEL * std.math.fabs(bl.ball.vx), gc.SMOKE_START_VEL);
                     sm.spawn_smoke(paddle.x + x_offset, paddle.y + @intToFloat(f16, paddle.anim.current_sprite_data.height) / 2 - gc.SMOKE_OFFSET_Y, vx_mult * gc.SMOKE_START_VEL * std.math.fabs(bl.ball.vx), -1 * gc.SMOKE_START_VEL);
 
-                    paddle.x = switch(paddle.side) {
-                        Side.left => paddle.normal_x - gc.PADDLE_BOUNCEBACK_DIST,
-                        Side.right => paddle.normal_x + gc.PADDLE_BOUNCEBACK_DIST,
-                    };
+                    paddle.x = paddle.normal_x + side_mult(paddle.side) * gc.PADDLE_BOUNCEBACK_DIST;
                     paddle.anim.current_state = Paddle_states.lunge;
                 },
                 Paddle_button_action.none => {

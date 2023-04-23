@@ -23,7 +23,7 @@ pub const PADDLE_CATCHBACK_MULT: f16 = 0.7;
 
 pub const SMOKE_START_VEL: f16 = 2;
 pub const SMOKE_DECEL_MULT: f16 = 0.8;
-pub const N_SMOKES_RINGBUFFER = 20;
+pub const N_SMOKES_RINGBUFFER = 30;
 
 pub const SMOKE_DURATION: u16 = 20;
 pub const SMOKE_OFFSET_Y: f16 = 0;
@@ -34,3 +34,16 @@ pub const GAME_NAME = "PING";
 pub const BALL_SPIN_VAL_MULT = 3;
 pub const BALL_SPIN_ACCEL_MULT = 0.15;
 pub const BALL_SPIN_DECAY_MULT = 0.98;
+
+pub const BALL_SMOKE_INTERVAL = 10;
+pub const BALL_SMOKE_OUTSPEED_MULT = 1;
+
+pub const LARGE_NUM_FOR_SEEDING_MOD: u16 = 50000;
+
+pub const SERVE_ANGLE_VARIATION = 60;
+pub const SERVE_MAGNITUDE = 1.3;
+
+pub const TITLE_LOC = 65;
+
+pub const SMOKE_PADDLE_OFFSET_MULT = 0.6;
+pub const SMOKE_VX_OFFSET_MULT = 0.3;

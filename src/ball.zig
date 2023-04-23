@@ -13,6 +13,7 @@ pub const Ball = struct {
     vx: f16,
     vy: f16,
     spin: f16,
+    smoke_timer: u16,
 };
 
 pub var ball = Ball{
@@ -23,4 +24,5 @@ pub var ball = Ball{
     .vx = 1,
     .vy = 0.0,
     .spin = 0.0,
+    .smoke_timer = 0,
 };
