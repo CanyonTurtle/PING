@@ -238,10 +238,7 @@ fn move_ball() void {
 }
 
 fn gamepad_input(player: *Player) void {
-    if (player.which_gamepad.* != 0) {
-        player.is_cpu_controlled = false;
-        player.is_active = true;
-    }
+
     if (player.which_gamepad.* & w4.BUTTON_UP != 0) {
         player.current_dir_input = pd.Paddle_dirs.up;   
     } else if (player.which_gamepad.* & w4.BUTTON_DOWN != 0) {
@@ -285,6 +282,10 @@ fn main_game_loop() void {
     // w4.blit(&gr.ping_img, 60, 0, gr.ping.width, gr.ping.height, gr.ping.flags);
 
     for(&players) |*player| {
+        if (player.which_gamepad.* != 0) {
+            player.is_cpu_controlled = false;
+            player.is_active = true;
+        }
         if(player.is_active) {
             gamepad_input(player);
             pd.update_paddle(player.paddle, player.current_dir_input);       
