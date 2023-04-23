@@ -107,9 +107,7 @@ fn is_colliding(ball: *bl.Ball, paddle: *const pd.Paddle) bool {
     
 }
 
-export fn start() void {
-
-
+fn my_start() void {
     w4.PALETTE.* = gr.pallete;
     reset_ball_and_paddles();
 }
@@ -332,7 +330,14 @@ fn main_game_loop() void {
     w4.text(&side2_score_buf, w4.SCREEN_SIZE - 16, 0);
 }
 
+var started: bool = false;
+
 export fn update() void {
+    // workaround to avoid https://github.com/aduros/wasm4/issues/542
+    if(!started) {
+        my_start();
+        started = true;
+    }
     framecount = @mod(framecount + 1, gc.LARGE_NUM_FOR_SEEDING_MOD);
     main_game_loop();
     if (timer < gc.RESTART_FRAME_WAIT) {
