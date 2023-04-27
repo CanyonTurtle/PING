@@ -142,10 +142,7 @@ pub fn animate_paddle(paddle: *Paddle, dir: Paddle_dirs, button_action: Paddle_b
 
             },
             else => {
-                paddle.x = switch(paddle.side) {
-                    Side.left => paddle.normal_x + gc.PADDLE_BOUNCEBACK_DIST,
-                    Side.right => paddle.normal_x - gc.PADDLE_BOUNCEBACK_DIST,
-                };
+                paddle.x = paddle.normal_x + -1 * side_mult(paddle.side) * gc.PADDLE_BOUNCEBACK_DIST;
             }
         }
 
@@ -160,7 +157,7 @@ pub fn animate_paddle(paddle: *Paddle, dir: Paddle_dirs, button_action: Paddle_b
             
             switch (button_action) {
                 Paddle_button_action.catchback => {
-                    paddle.x = paddle.normal_x + -1 * side_mult(paddle.side) * gc.PADDLE_BOUNCEBACK_DIST;
+                    paddle.x = paddle.normal_x + -2 * side_mult(paddle.side) * gc.PADDLE_BOUNCEBACK_DIST;
                     paddle.anim.current_state = Paddle_states.catchback;
                 },
                 Paddle_button_action.lunge => {
