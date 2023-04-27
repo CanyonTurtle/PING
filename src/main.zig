@@ -155,9 +155,10 @@ fn reset_ball_and_paddles() void {
     // bl.ball.vy = 0.0;
 
     var rnd = std.rand.DefaultPrng.init(framecount);
-    var rint = rnd.random().int(u16);
+    var rint = 0; 
     var dir: f16 = 90;
     while (!(360 - gc.SERVE_ANGLE_VARIATION <= dir or dir <= gc.SERVE_ANGLE_VARIATION or (180 - gc.SERVE_ANGLE_VARIATION <= dir and dir <= 180 + gc.SERVE_ANGLE_VARIATION))) {
+        rint = rnd.random().int(u16);
         dir = @intToFloat(f16, @mod(rint, 360));
     }
 
