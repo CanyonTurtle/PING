@@ -47,7 +47,7 @@ pub const LARGE_NUM_FOR_SEEDING_MOD: u16 = 50000;
 pub const SERVE_ANGLE_VARIATION = 60;
 pub const SERVE_MAGNITUDE = 1.3;
 
-pub const TITLE_LOC = 45;
+pub const TITLE_LOC = 35;
 
 pub const SMOKE_PADDLE_OFFSET_MULT = 0.6;
 pub const SMOKE_VX_OFFSET_MULT = 0.3;
@@ -57,4 +57,8 @@ pub const HOVER_DISPLAY_Y = 60;
 
 pub const PADDLE_RANDOM_VY_MULT = 0.02;
 
-pub const VERSION = "v0.2";
+pub const VERSION = "v0.2.3";
+
+pub const BOOTUP_TIME = 80;
+
+pub const CURSOR_BLINK_DURATION = 20;

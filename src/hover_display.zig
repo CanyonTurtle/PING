@@ -35,6 +35,18 @@ pub const catchback_tf = TextFont {
     .tertiary = 0x04,
 };
 
+
+pub const Cursor = struct {
+    current_text: [1]u8,
+    x_int: i32,
+    y_int: i32,
+    blink_duration: u16,
+    blink_timer: u16,
+    blink_state: bool,
+    font: *const TextFont,
+    current_selection: u8,
+};
+
 pub const HoverMessage = struct {
     text: [12]u8,
     duration: u16,
@@ -51,6 +63,7 @@ pub const HoverDisplay = struct {
     message_ringbuffer: [4]HoverMessage,
     message_top_idx: u8,
     is_active: bool,
+    cursor: Cursor,
 };
 
 pub var hover_display = HoverDisplay{
@@ -67,6 +80,16 @@ pub var hover_display = HoverDisplay{
     }} ** 4,
     .message_top_idx = 0,
     .is_active = true,
+    .cursor = Cursor{
+        .blink_state = false,
+        .blink_duration = gc.CURSOR_BLINK_DURATION,
+        .blink_timer = 0,
+        .current_text = "*".*,
+        .x_int = 0,
+        .y_int = 0,
+        .current_selection = 0,
+        .font = &normal_tf,
+    }
 };
 
 pub const DisplayMessageType = enum {
@@ -75,9 +98,14 @@ pub const DisplayMessageType = enum {
     catchback,
     point,
     starting,
+    title_welcome1,
+    title_welcome2,
+    title_play,
+    title_options,
 };
 
 pub const NO_DISPLAY_IDX_YET = -1;
+pub const INF_DURATION = std.math.maxInt(u16);
 
 pub var rally_count: u16 = 0;
 pub var rally_idx: i16 = NO_DISPLAY_IDX_YET;
@@ -110,14 +138,23 @@ pub fn display_msg(msg: DisplayMessageType) void{
                 tookup_new_slot = false;
             } else {
                 rally_idx = hover_display.message_top_idx;
-            }   
-            current_bufmsg.duration = 1000;
-            current_bufmsg.text_font = &normal_tf;
+            } 
+
             rally_count += 1;
-            const rally_msg: *const [12]u8 = "  Rally     ";
-            var rally_buf: [12]u8 = rally_msg.*;
-            _ = std.fmt.bufPrint(rally_buf[9..12], "{d}", .{rally_count}) catch undefined;
-            current_bufmsg.text = rally_buf;
+
+            if(rally_count > 4) {
+                current_bufmsg.duration = 1000;
+                current_bufmsg.text_font = &normal_tf;
+                const rally_msg: *const [12]u8 = "  Rally     ";
+                var rally_buf: [12]u8 = rally_msg.*;
+                _ = std.fmt.bufPrint(rally_buf[9..12], "{d}", .{rally_count}) catch undefined;
+                current_bufmsg.text = rally_buf;
+            } else {
+                tookup_new_slot = false;
+                rally_idx = NO_DISPLAY_IDX_YET;
+            }
+            
+            
         },
         .lunge => {
             current_bufmsg.text = "   Lunge!   ".*;
@@ -148,18 +185,40 @@ pub fn display_msg(msg: DisplayMessageType) void{
             
             starting_count -= 1;
         },
+        .title_welcome1 => {
+            current_bufmsg.text = "    PING    ".*;
+            current_bufmsg.duration = INF_DURATION;
+            current_bufmsg.text_font = &title_tf;
+        },
+        .title_welcome2 => {
+            current_bufmsg.text = "------------".*;
+            current_bufmsg.duration = INF_DURATION;
+            current_bufmsg.text_font = &normal_tf;
+        },
+        .title_play => {
+            current_bufmsg.text = "Play:any key".*;
+            current_bufmsg.duration = INF_DURATION;
+            current_bufmsg.text_font = &normal_tf;
+        },
+        .title_options => {
+            current_bufmsg.text = "            ".*;
+            current_bufmsg.duration = INF_DURATION;
+            current_bufmsg.text_font = &normal_tf;
+        },
         else => {
             current_bufmsg.text = "NOOP        ".*;
+            current_bufmsg.duration = INF_DURATION;
+            current_bufmsg.text_font = &normal_tf;
         }
     }
 
     current_bufmsg.timer = 0;
-    current_bufmsg.is_active = true;
 
     // if we take up a new slot in the ringbuffer,
     // existing active messages should shift upwards positionally (not in the ringbuffer idx).
     // the message in the last slot should fade out of existence.
-    if(tookup_new_slot) {
+    if(tookup_new_slot) {   
+        current_bufmsg.is_active = true;
         for(&hover_display.message_ringbuffer) |*message| {
             message.y_target -= 10;
             message.y_int = @floatToInt(i32, message.y);
@@ -189,12 +248,20 @@ pub fn decay_messages()void {
         if(message.is_active) {
             message.y += 0.1 * (message.y_target - message.y);
             message.y_int = @floatToInt(i32, message.y);
-            if(message.timer >= message.duration) {
+            if(message.duration != INF_DURATION and message.timer >= message.duration) {
                 message.is_active = false;
                 // TODO fade out
                 shift_messages_prior_to(message.timestamp);
             }
             message.timer += 1;
         }
+    }
+}
+
+pub fn blink_cursor() void {
+    hover_display.cursor.blink_timer += 1;
+    if(hover_display.cursor.blink_timer >= hover_display.cursor.blink_duration) {
+        hover_display.cursor.blink_timer = 0;
+        hover_display.cursor.blink_state = !hover_display.cursor.blink_state;
     }
 }
