@@ -57,7 +57,7 @@ pub const HOVER_DISPLAY_Y = 60;
 
 pub const PADDLE_RANDOM_VY_MULT = 0.02;
 
-pub const VERSION = "v0.2.3";
+pub const VERSION = "v0.2.4";
 
 pub const BOOTUP_TIME = 80;
 
