@@ -229,10 +229,19 @@ pub const minty_sunrise_3_dark_pallete: [4]u32 = .{
     0xFF69B4, // ball/overlay/smoke: bright pink
 };
 
+// Refined Grayscale Palette 3:
+pub const refined_grayscale_palette_3: [4]u32 = .{
+    0x212529, // bg: black
+    0xD4D4D4, // alt-text: dark gray
+    0x6C757D, // paddles: medium gray
+    0xF8F9FA, // ball/overlay/smoke: light gray
+};
+
 pub var pallete: *const [4]u32 = &alltime_pallete;
 
+pub var pallete_idx: u16 = 0;
 pub const pallete_list = [_]*const[4]u32{
-    &alltime_pallete,&minty_sunrise_3_dark_pallete,&minty_sunrise_pallete,&electric_city_pallete,&forest_walk_pallete,&neon_pallete,&golden_oasis_pallete
+    &alltime_pallete,&minty_sunrise_3_dark_pallete,&minty_sunrise_pallete,&electric_city_pallete,&forest_walk_pallete,&neon_pallete,&golden_oasis_pallete, &refined_grayscale_palette_3
 };
 
 

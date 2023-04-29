@@ -10,7 +10,7 @@ const cpus = @import("cpu_player.zig");
 
 var side1_score: i32 = 0;
 var side2_score: i32 = 0;
-var timer: u32 = 0;
+var round_timer: u32 = 0;
 var is_cpu: bool = true;
 var framecount: u16 = 0;
 
@@ -21,6 +21,7 @@ const GameStates = enum {
     title_screen,
     main_game,
     options,
+    about,
 };
 
 const SingleRoundState = enum {
@@ -190,7 +191,7 @@ fn reset_and_start_new_round() void {
     bl.ball.spin = 0;
 
     if (game_state == GameStates.main_game) {
-        hd.reset_hover_display();
+        hd.reset_hover_display(4);
     }
 
     // gr.pallete = gr.pallete_list[@mod(rint, gr.pallete_list.len - 1)];
@@ -241,6 +242,8 @@ fn handle_ball_colliding_with_paddle(player: *Player) void {
         if (game_state == GameStates.main_game) {
             hd.display_msg(hd.DisplayMessageType.rally);
         }
+
+        // mu.play_paddle_hit();
     }
 }
 
@@ -282,10 +285,12 @@ fn move_ball() void {
     bl.ball.y += bl.ball.vy;
 
     if (bl.ball.x < 0) {
-        round_state = SingleRoundState.init_round;
+        round_state = SingleRoundState.someone_scored;
+        round_timer = 0;
         side2_score += 1;
     } else if (bl.ball.x > w4.SCREEN_SIZE - gr.ball.width) {
-        round_state = SingleRoundState.init_round;
+        round_state = SingleRoundState.someone_scored;
+        round_timer = 0;
         side1_score += 1;
     }
 
@@ -365,15 +370,31 @@ fn draw_screen() void {
         w4.text(gc.GAME_NAME, gc.TITLE_LOC, 0);
 
         w4.DRAW_COLORS.* = gr.hover_display_draw_colors;
-        w4.text(gc.VERSION, gc.TITLE_LOC + 8 * 5, 0);
+        // w4.text(gc.VERSION, gc.TITLE_LOC + 8 * 5, 0);
 
         var side1_score_buf: [2]u8 = .{ 0x0, 0x0 };
         _ = std.fmt.bufPrint(&side1_score_buf, "{d}", .{side1_score}) catch undefined;
         var side2_score_buf: [2]u8 = .{ 0x0, 0x0 };
         _ = std.fmt.bufPrint(&side2_score_buf, "{d}", .{side2_score}) catch undefined;
 
-        w4.text(&side1_score_buf, 0, 0);
-        w4.text(&side2_score_buf, w4.SCREEN_SIZE - 16, 0);
+        if (round_state == SingleRoundState.someone_scored) {
+            if (@mod(round_timer / 2, 10) < 3) {
+                if (bl.ball.x < 60) {  
+                    w4.text(&side1_score_buf, 0, 0);
+                } else {
+                    w4.text(&side2_score_buf, w4.SCREEN_SIZE - 16, 0);
+                }
+                
+            } else {
+                w4.text(&side1_score_buf, 0, 0);
+                w4.text(&side2_score_buf, w4.SCREEN_SIZE - 16, 0);
+            }
+
+        } else {
+            w4.text(&side1_score_buf, 0, 0);
+            w4.text(&side2_score_buf, w4.SCREEN_SIZE - 16, 0);
+        }
+        
     }
 
     // w4.text(gc.VERSION, w4.SCREEN_SIZE - 8 * 5, w4.SCREEN_SIZE - 8);
@@ -387,8 +408,6 @@ fn draw_screen() void {
         }
         // speed meter
 
-        // var sp_line_len = @floatToInt(i32, @fabs(bl.ball.vx / gc.BALL_MAX_VX  * 15) + @fabs(bl.ball.vy / gc.BALL_MAX_VX * 45));
-        // w4.line(gc.HOVER_DISPLAY_X + 24, gc.HOVER_DISPLAY_Y + 13, gc.HOVER_DISPLAY_X + 24 + sp_line_len, gc.HOVER_DISPLAY_Y + 13);
     }
 
     for (&players) |*player| {
@@ -402,18 +421,46 @@ fn draw_screen() void {
     w4.blit(&gr.ball_image, bl.ball.x_int, bl.ball.y_int, gr.ball.width, gr.ball.height, gr.ball.flags);
     w4.DRAW_COLORS.* = 0x03;
 
-    if (game_state == GameStates.title_screen) {
+    if (game_state != GameStates.main_game) {
         if (hd.hover_display.cursor.blink_state) {
-            draw_font(&hd.hover_display.cursor.current_text, hd.hover_display.cursor.x_int, hd.hover_display.cursor.y_int, hd.hover_display.cursor.font);
+            draw_font(&hd.hover_display.cursor.current_text, hd.hover_display.cursor.x_int, hd.hover_display.cursor.y_int + hd.hover_display.cursor.current_selection * gc.HOVER_DISPLAY_Y_DIST_BETWEEN_LINES, hd.hover_display.cursor.font);
         }
     }
 }
 
-fn get_menu_option() GameStates {
-    return GameStates.main_game;
+// handles moving the cursor,
+// and if a menu option is pressed,
+// it will return the new game state.
+var menu_input: u8 = 0;
+var prev_menu_input: u8 = 0;
+const MENU_NOTHING_SELECTED = 255;
+
+fn get_menu_option() u8 {
+    menu_input = w4.GAMEPAD1.*;
+    var menu_input_this_frame: u8 = menu_input & (menu_input ^ prev_menu_input);
+    prev_menu_input = menu_input;
+
+    var offs: i8 = 0;
+    if (menu_input_this_frame & w4.BUTTON_DOWN != 0) {
+        offs = 1;
+
+    } else if (menu_input_this_frame & w4.BUTTON_UP != 0) {
+        offs = -1;
+    } else if (menu_input_this_frame & w4.BUTTON_1 != 0) {
+        return hd.hover_display.cursor.current_selection;
+    }
+    // 2 options will be used up by the menu name
+    hd.hover_display.cursor.current_selection = @intCast(u8, @mod(@intCast(i16, hd.hover_display.cursor.current_selection) + offs, @intCast(i16, hd.hover_display.effective_length) - 2));
+    if (offs != 0) {
+        hd.hover_display.cursor.blink_state = true;
+        hd.hover_display.cursor.blink_timer = 0;
+    }
+    return MENU_NOTHING_SELECTED;
+    // return GameStates.main_game;
 }
 
 var bootup_timer: u32 = 0;
+var options_timer: u32 = 0;
 
 export fn update() void {
     switch (game_state) {
@@ -429,25 +476,36 @@ export fn update() void {
             if (bootup_timer < gc.BOOTUP_TIME) {
                 bootup_timer += 1;
             } else if (bootup_timer == gc.BOOTUP_TIME) {
-                hd.display_msg(hd.DisplayMessageType.title_welcome1);
-                hd.display_msg(hd.DisplayMessageType.title_welcome2);
+                hd.reset_hover_display(4);
+                hd.display_msg(hd.DisplayMessageType.title_title);
+                hd.display_msg(hd.DisplayMessageType.divider_line);
                 hd.display_msg(hd.DisplayMessageType.title_play);
                 hd.display_msg(hd.DisplayMessageType.title_options);
+
                 bootup_timer += 1;
-                hd.hover_display.cursor.x_int = gc.HOVER_DISPLAY_X - 10;
-                hd.hover_display.cursor.y_int = gc.HOVER_DISPLAY_Y - 10;
-                hd.hover_display.cursor.current_selection = 2;
+                
             } else if (bootup_timer > gc.BOOTUP_TIME and bootup_timer < gc.BOOTUP_TIME + 30) {
                 bootup_timer += 1;
+                // mu.start_song(&mu.song_1);
             } else {
                 hd.blink_cursor();
 
-                // game_state = get_menu_option();
-                if (w4.GAMEPAD1.* != 0) {
-                    players[0].is_cpu_controlled = false;
-                    players[0].is_active = true;
-                    game_state = GameStates.main_game;
-                    round_state = SingleRoundState.init_round;
+                var option_selected: u8 = get_menu_option();
+
+                switch (option_selected) {
+                    0 => {
+                        players[0].is_cpu_controlled = false;
+                        players[0].is_active = true;
+                        game_state = GameStates.main_game;
+                        round_state = SingleRoundState.init_round;
+                    },
+                    1 => {
+                        game_state = GameStates.options;
+                        options_timer = 0;
+                    },
+                    else => {
+                        
+                    },
                 }
             }
         },
@@ -459,18 +517,83 @@ export fn update() void {
                 }
             }
         },
-        .options => {},
+        .options => {
+            if (options_timer == 0) {
+                options_timer += 1;
+                hd.reset_hover_display(5);
+                hd.display_msg(hd.DisplayMessageType.options_options);
+                hd.display_msg(hd.DisplayMessageType.divider_line);
+                hd.display_msg(hd.DisplayMessageType.options_pallete_rotate);
+                hd.display_msg(hd.DisplayMessageType.options_about);
+                hd.display_msg(hd.DisplayMessageType.back);
+
+            } else {
+                hd.blink_cursor();
+
+                var option_selected: u8 = get_menu_option();
+
+                switch (option_selected) {
+                    0 => {
+                        gr.pallete_idx = @mod(gr.pallete_idx + 1, @intCast(u16, gr.pallete_list.len));
+                        w4.PALETTE.* = gr.pallete_list[gr.pallete_idx].*;
+                        _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[2].text[7..8], "{d}", .{gr.pallete_idx + 1}) catch undefined;
+                        _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[2].text[9..10], "{d}", .{gr.pallete_list.len}) catch undefined;
+                    },
+                    1 => {
+                        game_state = GameStates.about;
+                        options_timer = 0;
+                    },
+                    2 => {
+                        game_state = GameStates.title_screen;
+                        bootup_timer = gc.BOOTUP_TIME;
+                    },
+                    else => {
+                        
+                    },
+                }
+            }
+
+
+        },
+
+        .about => {
+            if (options_timer == 0) {
+                options_timer += 1;
+                hd.reset_hover_display(6);
+                hd.display_msg(hd.DisplayMessageType.about_about);
+                hd.display_msg(hd.DisplayMessageType.divider_line);
+                hd.display_msg(hd.DisplayMessageType.about_author_label);
+                hd.display_msg(hd.DisplayMessageType.about_author);
+                hd.display_msg(hd.DisplayMessageType.about_version);
+                hd.display_msg(hd.DisplayMessageType.back);
+
+            } else {
+                hd.blink_cursor();
+
+                var option_selected: u8 = get_menu_option();
+
+                switch (option_selected) {
+                    3 => {
+                        game_state = GameStates.title_screen;
+                        bootup_timer = gc.BOOTUP_TIME;
+                    },
+                    else => {
+                        
+                    },
+                }
+            }
+        },
     }
 
     switch (round_state) {
         .init_round => {
             reset_and_start_new_round();
-            timer = 0;
+            round_timer = 0;
             round_state = SingleRoundState.countdown;
         },
         .countdown => {
-            if (timer < gc.RESTART_FRAME_WAIT) {
-                timer += 1;
+            if (round_timer < gc.RESTART_FRAME_WAIT) {
+                round_timer += 1;
                 // if (gc.RESTART_FRAME_WAIT / 2 <= timer and timer < gc.RESTART_FRAME_WAIT * 4/6) {
                 //     w4.DRAW_COLORS.* = 2;
                 //     w4.text("Start in 3..", 40, 50);
@@ -482,7 +605,7 @@ export fn update() void {
                 //     w4.DRAW_COLORS.* = 2;
                 //     w4.text("Start in 1..", 40, 50);
                 // }
-                if (game_state == GameStates.main_game and (timer == 30 or timer == 60 or timer == 90 or timer == 120)) {
+                if (game_state == GameStates.main_game and (round_timer == 30 or round_timer == 60 or round_timer == 90 or round_timer == 120)) {
                     hd.display_msg(hd.DisplayMessageType.starting);
                 }
             } else {
@@ -494,7 +617,17 @@ export fn update() void {
         },
 
         // when a score is detected, we will transition to here
-        .someone_scored => {},
+        .someone_scored => {
+            if (game_state == GameStates.main_game and round_timer == 0) {
+                hd.display_msg(hd.DisplayMessageType.point);
+                round_timer += 1;
+            } else if (round_timer < 70) {
+                round_timer += 1;
+            } else {
+                round_timer = 0;
+                round_state = SingleRoundState.init_round;
+            }
+        }
     }
 
     framecount = @mod(framecount + 1, gc.LARGE_NUM_FOR_SEEDING_MOD);
@@ -516,5 +649,11 @@ export fn update() void {
     hd.decay_messages();
     sm.update_smokes();
 
+    // for (mu.songs) |song| {
+    //     if(song.is_playing) {
+    //         mu.play_song(song);
+    //     }
+    // }
+    // mu.play_song(&mu.song_1);
     draw_screen();
 }

@@ -60,10 +60,13 @@ pub const HoverMessage = struct {
 };
 
 pub const HoverDisplay = struct {
-    message_ringbuffer: [4]HoverMessage,
+    message_ringbuffer: [8]HoverMessage,
+    effective_length: u8,
     message_top_idx: u8,
     is_active: bool,
     cursor: Cursor,
+    y_int: i32,
+    x_int: i32,
 };
 
 pub var hover_display = HoverDisplay{
@@ -77,7 +80,8 @@ pub var hover_display = HoverDisplay{
         .timer = 0,
         .timestamp = 0,
         .text_font = &normal_tf
-    }} ** 4,
+    }} ** 8,
+    .effective_length = 4,
     .message_top_idx = 0,
     .is_active = true,
     .cursor = Cursor{
@@ -89,7 +93,9 @@ pub var hover_display = HoverDisplay{
         .y_int = 0,
         .current_selection = 0,
         .font = &normal_tf,
-    }
+    },
+    .y_int = gc.HOVER_DISPLAY_Y,
+    .x_int = gc.HOVER_DISPLAY_X,
 };
 
 pub const DisplayMessageType = enum {
@@ -98,10 +104,18 @@ pub const DisplayMessageType = enum {
     catchback,
     point,
     starting,
-    title_welcome1,
-    title_welcome2,
+    title_title,
+    divider_line,
     title_play,
     title_options,
+    options_options,
+    options_pallete_rotate,
+    options_about,
+    about_about,
+    about_version,
+    about_author,
+    about_author_label,
+    back,
 };
 
 pub const NO_DISPLAY_IDX_YET = -1;
@@ -113,12 +127,22 @@ pub var start_idx: i16 = NO_DISPLAY_IDX_YET;
 pub var rally_timestamp: u16 = 0;
 pub var starting_count: u8 = 3;
 
-pub fn reset_hover_display() void {
+pub fn reset_hover_display(num_lines_total: u8) void {
     rally_count = 0;
     rally_idx = NO_DISPLAY_IDX_YET;
     start_idx = NO_DISPLAY_IDX_YET;
     rally_timestamp = 0;
     starting_count = 3;
+    hover_display.effective_length = num_lines_total;
+
+    // the position specified is for when the list is the normal length (4) so we offset it appropriately.
+    hover_display.y_int = gc.HOVER_DISPLAY_Y + gc.HOVER_DISPLAY_Y_DIST_BETWEEN_LINES * (hover_display.effective_length - 4);
+
+    // position the cursor to the first option
+    hover_display.cursor.x_int = hover_display.x_int - 10;
+    hover_display.cursor.y_int = hover_display.y_int - gc.HOVER_DISPLAY_Y_DIST_BETWEEN_LINES  * (hover_display.effective_length - 3);
+    hover_display.cursor.current_selection = 0;
+
     for(&hover_display.message_ringbuffer) |*message| {
         message.is_active = false;
     }
@@ -185,30 +209,75 @@ pub fn display_msg(msg: DisplayMessageType) void{
             
             starting_count -= 1;
         },
-        .title_welcome1 => {
+        .title_title => {
             current_bufmsg.text = "    PING    ".*;
             current_bufmsg.duration = INF_DURATION;
             current_bufmsg.text_font = &title_tf;
         },
-        .title_welcome2 => {
+        .divider_line => {
             current_bufmsg.text = "------------".*;
             current_bufmsg.duration = INF_DURATION;
             current_bufmsg.text_font = &normal_tf;
         },
         .title_play => {
-            current_bufmsg.text = "Play:any key".*;
+            current_bufmsg.text = "Play!       ".*;
             current_bufmsg.duration = INF_DURATION;
             current_bufmsg.text_font = &normal_tf;
         },
         .title_options => {
-            current_bufmsg.text = "            ".*;
+            current_bufmsg.text = "Options     ".*;
             current_bufmsg.duration = INF_DURATION;
             current_bufmsg.text_font = &normal_tf;
         },
-        else => {
-            current_bufmsg.text = "NOOP        ".*;
+        .options_options => {
+            current_bufmsg.text = "  Options   ".*;
+            current_bufmsg.duration = INF_DURATION;
+            current_bufmsg.text_font = &title_tf;
+        },
+        .options_pallete_rotate => {
+            // current_bufmsg.text = "Color toggle".*;
+            current_bufmsg.text = "Color ( / ) ".*;
+            _ = std.fmt.bufPrint(current_bufmsg.text[7..8], "{d}", .{gr.pallete_idx + 1}) catch undefined;
+            _ = std.fmt.bufPrint(current_bufmsg.text[9..10], "{d}", .{gr.pallete_list.len}) catch undefined;
+
             current_bufmsg.duration = INF_DURATION;
             current_bufmsg.text_font = &normal_tf;
+        },
+        .options_about => {
+            current_bufmsg.text = "About Game  ".*;
+            current_bufmsg.duration = INF_DURATION;
+            current_bufmsg.text_font = &normal_tf;
+        },
+        .back => {
+            current_bufmsg.text = "<-- (Back)  ".*;
+            current_bufmsg.duration = INF_DURATION;
+            current_bufmsg.text_font = &normal_tf;
+        },
+        .about_about => {
+            current_bufmsg.text = "About Game  ".*;
+            current_bufmsg.duration = INF_DURATION;
+            current_bufmsg.text_font = &title_tf;
+        },
+        .about_version => {
+            current_bufmsg.text = "Ver:        ".*;
+            _ = std.fmt.bufPrint(current_bufmsg.text[5..12], "{s}", .{gc.VERSION}) catch undefined;
+            current_bufmsg.duration = INF_DURATION;
+            current_bufmsg.text_font = &normal_tf;
+        },
+        .about_author_label => {
+            current_bufmsg.text = "Author:     ".*;
+            current_bufmsg.duration = INF_DURATION;
+            current_bufmsg.text_font = &normal_tf;
+        },
+        .about_author => {
+            current_bufmsg.text = "CanyonTurtle".*;
+            current_bufmsg.duration = INF_DURATION;
+            current_bufmsg.text_font = &normal_tf;
+        },
+        .point => {
+            current_bufmsg.text = "   Point!   ".*;
+            current_bufmsg.duration = 50;
+            current_bufmsg.text_font = &lunge_tf;
         }
     }
 
@@ -220,22 +289,22 @@ pub fn display_msg(msg: DisplayMessageType) void{
     if(tookup_new_slot) {   
         current_bufmsg.is_active = true;
         for(&hover_display.message_ringbuffer) |*message| {
-            message.y_target -= 10;
+            message.y_target -= gc.HOVER_DISPLAY_Y_DIST_BETWEEN_LINES;
             message.y_int = @floatToInt(i32, message.y);
         }
         current_bufmsg.timestamp = rally_timestamp;
         rally_timestamp += 1;
-        current_bufmsg.y_target = gc.HOVER_DISPLAY_Y;
+        current_bufmsg.y_target = @intToFloat(f16, hover_display.y_int);
         current_bufmsg.y = current_bufmsg.y_target + 20;
         current_bufmsg.y_int = @floatToInt(i32, current_bufmsg.y);
-        hover_display.message_top_idx = @mod(hover_display.message_top_idx + 1, @intCast(u8, hover_display.message_ringbuffer.len));
+        hover_display.message_top_idx = @mod(hover_display.message_top_idx + 1, @intCast(u8, hover_display.effective_length));
     }
 }
 
 fn shift_messages_prior_to(timestamp: u16) void {
     for(&hover_display.message_ringbuffer) |*message| {
         if (message.timestamp < timestamp) {
-            message.y_target += 10;
+            message.y_target += gc.HOVER_DISPLAY_Y_DIST_BETWEEN_LINES;
             // message.y_int = @floatToInt(i32, message.y);
         }
     }
