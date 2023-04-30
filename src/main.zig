@@ -183,7 +183,7 @@ fn reset_and_start_new_round() void {
 
     // bl.ball.vx = 1.0;
     // bl.ball.vy = 0.0;
-
+    rally_count = 0;
     var rnd = std.rand.DefaultPrng.init(framecount);
     var rint: u16 = 0;
     var dir: f16 = 90;
@@ -224,14 +224,17 @@ var starting_handle: u16 = hd.NOIDX;
 var rally_handle: u16 = hd.NOIDX;
 var match_win_handle: u16 = hd.NOIDX;
 
+var rally_count: u16 = 0;
+
 pub fn reset_text_handles() void {
     color_handle = hd.NOIDX;
     starting_handle = hd.NOIDX;
     rally_handle = hd.NOIDX;
     match_win_handle = hd.NOIDX;
+
 }
 
-var rally_count: u16 = 0;
+
 
 fn handle_ball_colliding_with_paddle(player: *Player) void {
     // ball off paddle physics
@@ -279,8 +282,8 @@ fn handle_ball_colliding_with_paddle(player: *Player) void {
             // hd.display_msg(hd.DisplayMessageType.rally);
             rally_count += 1;
             if (rally_count >= 5) {
-                rally_handle = hd.display_msg(rally_handle, "Rally X     ".*, hd.INF_DURATION, &hd.normal_tf);
-                _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[rally_handle].text[6..7], "{d}", .{rally_count}) catch undefined;
+                rally_handle = hd.display_msg(rally_handle, "   Rally X  ".*, hd.INF_DURATION, &hd.normal_tf);
+                _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[rally_handle].text[9..10], "{d}", .{rally_count}) catch undefined;
             }
             
         }
