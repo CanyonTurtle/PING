@@ -66,3 +66,6 @@ pub const VERSION = "v0.3.0";
 pub const BOOTUP_TIME = 50;
 
 pub const CURSOR_BLINK_DURATION = 20;
+
+pub const MATCH_WIN_COUNT = 3;
+pub const GAME_POINT_WIN_COUNT = 7;

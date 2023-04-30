@@ -45,6 +45,7 @@ pub const Cursor = struct {
     blink_state: bool,
     font: *const TextFont,
     current_selection: u8,
+    menumode_enabled: bool,
 };
 
 pub const HoverMessage = struct {
@@ -93,6 +94,7 @@ pub var hover_display = HoverDisplay{
         .y_int = 0,
         .current_selection = 0,
         .font = &normal_tf,
+        .menumode_enabled = true,
     },
     .y_int = gc.HOVER_DISPLAY_Y,
     .x_int = gc.HOVER_DISPLAY_X,
@@ -116,18 +118,26 @@ pub const DisplayMessageType = enum {
     about_author,
     about_author_label,
     back,
+    game_start,
+    game_end,
+    match_start,
+    match_end,
+    to_title,
 };
 
-pub const NO_DISPLAY_IDX_YET = -1;
+pub const NO_DISPLAY_IDX_YET = 32767;
+pub const NOIDX = NO_DISPLAY_IDX_YET;
 pub const INF_DURATION = std.math.maxInt(u16);
 
 pub var rally_count: u16 = 0;
-pub var rally_idx: i16 = NO_DISPLAY_IDX_YET;
-pub var start_idx: i16 = NO_DISPLAY_IDX_YET;
+pub var rally_idx: u16 = NO_DISPLAY_IDX_YET;
+pub var start_idx: u16 = NO_DISPLAY_IDX_YET;
 pub var rally_timestamp: u16 = 0;
 pub var starting_count: u8 = 3;
 
-pub fn reset_hover_display(num_lines_total: u8) void {
+pub fn reset_hover_display(num_lines_total: u8, menumode: bool) void {
+    hover_display.message_top_idx = 0;
+    hover_display.cursor.menumode_enabled = menumode;
     rally_count = 0;
     rally_idx = NO_DISPLAY_IDX_YET;
     start_idx = NO_DISPLAY_IDX_YET;
@@ -148,144 +158,182 @@ pub fn reset_hover_display(num_lines_total: u8) void {
     }
 }
 
-// pushes current messages up, and 
-pub fn display_msg(msg: DisplayMessageType) void{
+// Makes a new message.
+// pushes current messages up, and returns a handle to current message.
+pub fn display_msg(handle: u16, text: [12]u8, duration: u16, font: *const TextFont) u16 {
 
     var current_bufmsg: *HoverMessage = &hover_display.message_ringbuffer[hover_display.message_top_idx];
     var tookup_new_slot: bool = true;
 
-    switch(msg) {
-        .rally => {
-
-            if (rally_idx != NO_DISPLAY_IDX_YET) {
-                current_bufmsg = &hover_display.message_ringbuffer[@intCast(usize, rally_idx)];
-                tookup_new_slot = false;
-            } else {
-                rally_idx = hover_display.message_top_idx;
-            } 
-
-            rally_count += 1;
-
-            if(rally_count > 4) {
-                current_bufmsg.duration = 1000;
-                current_bufmsg.text_font = &normal_tf;
-                const rally_msg: *const [12]u8 = "  Rally     ";
-                var rally_buf: [12]u8 = rally_msg.*;
-                _ = std.fmt.bufPrint(rally_buf[9..12], "{d}", .{rally_count}) catch undefined;
-                current_bufmsg.text = rally_buf;
-            } else {
-                tookup_new_slot = false;
-                rally_idx = NO_DISPLAY_IDX_YET;
-            }
-            
-            
-        },
-        .lunge => {
-            current_bufmsg.text = "   Lunge!   ".*;
-            current_bufmsg.duration = 50;
-            current_bufmsg.text_font = &lunge_tf;
-        },
-        .catchback => {
-            current_bufmsg.text = "   Catch!   ".*;
-            current_bufmsg.duration = 50;
-            current_bufmsg.text_font = &catchback_tf;
-        },
-        .starting => {
-            current_bufmsg.text_font = &title_tf;
-            if (start_idx != NO_DISPLAY_IDX_YET) {
-                current_bufmsg = &hover_display.message_ringbuffer[@intCast(usize, start_idx)];
-                tookup_new_slot = false;
-            } else {
-                start_idx = hover_display.message_top_idx;
-            }
-            if (starting_count > 0) {
-                current_bufmsg.text = " Start in   ".*;
-                _ = std.fmt.bufPrint(current_bufmsg.text[10..12], "{d}", .{starting_count}) catch undefined;
-            } else {
-                current_bufmsg.text = "    Go!!    ".*;
-            }
-
-            current_bufmsg.duration = 60;
-            
-            starting_count -= 1;
-        },
-        .title_title => {
-            current_bufmsg.text = "    PING    ".*;
-            current_bufmsg.duration = INF_DURATION;
-            current_bufmsg.text_font = &title_tf;
-        },
-        .divider_line => {
-            current_bufmsg.text = "------------".*;
-            current_bufmsg.duration = INF_DURATION;
-            current_bufmsg.text_font = &normal_tf;
-        },
-        .title_play => {
-            current_bufmsg.text = "Play!       ".*;
-            current_bufmsg.duration = INF_DURATION;
-            current_bufmsg.text_font = &normal_tf;
-        },
-        .title_options => {
-            current_bufmsg.text = "Options     ".*;
-            current_bufmsg.duration = INF_DURATION;
-            current_bufmsg.text_font = &normal_tf;
-        },
-        .options_options => {
-            current_bufmsg.text = "  Options   ".*;
-            current_bufmsg.duration = INF_DURATION;
-            current_bufmsg.text_font = &title_tf;
-        },
-        .options_pallete_rotate => {
-            // current_bufmsg.text = "Color toggle".*;
-            current_bufmsg.text = "Color ( / ) ".*;
-            _ = std.fmt.bufPrint(current_bufmsg.text[7..8], "{d}", .{gr.pallete_idx + 1}) catch undefined;
-            _ = std.fmt.bufPrint(current_bufmsg.text[9..10], "{d}", .{gr.pallete_list.len}) catch undefined;
-
-            current_bufmsg.duration = INF_DURATION;
-            current_bufmsg.text_font = &normal_tf;
-        },
-        .options_about => {
-            current_bufmsg.text = "About Game  ".*;
-            current_bufmsg.duration = INF_DURATION;
-            current_bufmsg.text_font = &normal_tf;
-        },
-        .back => {
-            current_bufmsg.text = "<-- (Back)  ".*;
-            current_bufmsg.duration = INF_DURATION;
-            current_bufmsg.text_font = &normal_tf;
-        },
-        .about_about => {
-            current_bufmsg.text = "About Game  ".*;
-            current_bufmsg.duration = INF_DURATION;
-            current_bufmsg.text_font = &title_tf;
-        },
-        .about_version => {
-            current_bufmsg.text = "Ver:        ".*;
-            _ = std.fmt.bufPrint(current_bufmsg.text[5..12], "{s}", .{gc.VERSION}) catch undefined;
-            current_bufmsg.duration = INF_DURATION;
-            current_bufmsg.text_font = &normal_tf;
-        },
-        .about_author_label => {
-            current_bufmsg.text = "Author:     ".*;
-            current_bufmsg.duration = INF_DURATION;
-            current_bufmsg.text_font = &normal_tf;
-        },
-        .about_author => {
-            current_bufmsg.text = "CanyonTurtle".*;
-            current_bufmsg.duration = INF_DURATION;
-            current_bufmsg.text_font = &normal_tf;
-        },
-        .point => {
-            current_bufmsg.text = "   Point!   ".*;
-            current_bufmsg.duration = 50;
-            current_bufmsg.text_font = &lunge_tf;
-        }
+    if(handle != NO_DISPLAY_IDX_YET) {
+        current_bufmsg = &hover_display.message_ringbuffer[@intCast(usize, handle)];
+        tookup_new_slot = false;
     }
+
+    current_bufmsg.text = text;
+    current_bufmsg.duration = duration;
+    current_bufmsg.text_font = font;
+
+    // switch(msg) {
+    //     .rally => {
+
+    //         if (rally_idx != NO_DISPLAY_IDX_YET) {
+    //             current_bufmsg = &hover_display.message_ringbuffer[@intCast(usize, rally_idx)];
+    //             tookup_new_slot = false;
+    //         } else {
+    //             rally_idx = hover_display.message_top_idx;
+    //         } 
+
+    //         rally_count += 1;
+
+    //         if(rally_count > 4) {
+    //             current_bufmsg.duration = 1000;
+    //             current_bufmsg.text_font = &normal_tf;
+    //             const rally_msg: *const [12]u8 = "  Rally     ";
+    //             var rally_buf: [12]u8 = rally_msg.*;
+    //             _ = std.fmt.bufPrint(rally_buf[9..12], "{d}", .{rally_count}) catch undefined;
+    //             current_bufmsg.text = rally_buf;
+    //         } else {
+    //             tookup_new_slot = false;
+    //             rally_idx = NO_DISPLAY_IDX_YET;
+    //         }
+            
+            
+    //     },
+    //     .lunge => {
+    //         current_bufmsg.text = "   Lunge!   ".*;
+    //         current_bufmsg.duration = 50;
+    //         current_bufmsg.text_font = &lunge_tf;
+    //     },
+    //     .catchback => {
+    //         current_bufmsg.text = "   Catch!   ".*;
+    //         current_bufmsg.duration = 50;
+    //         current_bufmsg.text_font = &catchback_tf;
+    //     },
+    //     .starting => {
+    //         current_bufmsg.text_font = &title_tf;
+    //         if (start_idx != NO_DISPLAY_IDX_YET) {
+    //             current_bufmsg = &hover_display.message_ringbuffer[@intCast(usize, start_idx)];
+    //             tookup_new_slot = false;
+    //         } else {
+    //             start_idx = hover_display.message_top_idx;
+    //         }
+    //         if (starting_count > 0) {
+    //             current_bufmsg.text = " Start in   ".*;
+    //             _ = std.fmt.bufPrint(current_bufmsg.text[10..12], "{d}", .{starting_count}) catch undefined;
+    //         } else {
+    //             current_bufmsg.text = "    Go!!    ".*;
+    //         }
+
+    //         current_bufmsg.duration = 60;
+            
+    //         starting_count -= 1;
+    //     },
+    //     .title_title => {
+    //         current_bufmsg.text = "    PING    ".*;
+    //         current_bufmsg.duration = INF_DURATION;
+    //         current_bufmsg.text_font = &title_tf;
+    //     },
+    //     .divider_line => {
+    //         current_bufmsg.text = "------------".*;
+    //         current_bufmsg.duration = INF_DURATION;
+    //         current_bufmsg.text_font = &normal_tf;
+    //     },
+    //     .title_play => {
+    //         current_bufmsg.text = "Play!       ".*;
+    //         current_bufmsg.duration = INF_DURATION;
+    //         current_bufmsg.text_font = &normal_tf;
+    //     },
+    //     .title_options => {
+    //         current_bufmsg.text = "Options     ".*;
+    //         current_bufmsg.duration = INF_DURATION;
+    //         current_bufmsg.text_font = &normal_tf;
+    //     },
+    //     .options_options => {
+    //         current_bufmsg.text = "  Options   ".*;
+    //         current_bufmsg.duration = INF_DURATION;
+    //         current_bufmsg.text_font = &title_tf;
+    //     },
+    //     .options_pallete_rotate => {
+    //         // current_bufmsg.text = "Color toggle".*;
+    //         current_bufmsg.text = "Color ( / ) ".*;
+    //         _ = std.fmt.bufPrint(current_bufmsg.text[7..8], "{d}", .{gr.pallete_idx + 1}) catch undefined;
+    //         _ = std.fmt.bufPrint(current_bufmsg.text[9..10], "{d}", .{gr.pallete_list.len}) catch undefined;
+
+    //         current_bufmsg.duration = INF_DURATION;
+    //         current_bufmsg.text_font = &normal_tf;
+    //     },
+    //     .options_about => {
+    //         current_bufmsg.text = "About Game  ".*;
+    //         current_bufmsg.duration = INF_DURATION;
+    //         current_bufmsg.text_font = &normal_tf;
+    //     },
+    //     .back => {
+    //         current_bufmsg.text = "<-- (Back)  ".*;
+    //         current_bufmsg.duration = INF_DURATION;
+    //         current_bufmsg.text_font = &normal_tf;
+    //     },
+    //     .about_about => {
+    //         current_bufmsg.text = "About Game  ".*;
+    //         current_bufmsg.duration = INF_DURATION;
+    //         current_bufmsg.text_font = &title_tf;
+    //     },
+    //     .about_version => {
+    //         current_bufmsg.text = "Ver:        ".*;
+    //         _ = std.fmt.bufPrint(current_bufmsg.text[5..12], "{s}", .{gc.VERSION}) catch undefined;
+    //         current_bufmsg.duration = INF_DURATION;
+    //         current_bufmsg.text_font = &normal_tf;
+    //     },
+    //     .about_author_label => {
+    //         current_bufmsg.text = "Author:     ".*;
+    //         current_bufmsg.duration = INF_DURATION;
+    //         current_bufmsg.text_font = &normal_tf;
+    //     },
+    //     .about_author => {
+    //         current_bufmsg.text = "CanyonTurtle".*;
+    //         current_bufmsg.duration = INF_DURATION;
+    //         current_bufmsg.text_font = &normal_tf;
+    //     },
+    //     .point => {
+    //         current_bufmsg.text = "   Point!   ".*;
+    //         current_bufmsg.duration = 50;
+    //         current_bufmsg.text_font = &lunge_tf;
+    //     },
+    //     .game_start => {
+    //         current_bufmsg.text = "START GAME! ".*;
+    //         current_bufmsg.duration = 70;
+    //         current_bufmsg.text_font = &title_tf;
+    //     },
+    //     .game_end => {
+    //         current_bufmsg.text = "    GAME!   ".*;
+    //         current_bufmsg.duration = 70;
+    //         current_bufmsg.text_font = &title_tf;
+    //     },
+    //     .match_start => {
+    //         current_bufmsg.text = "START MATCH!".*;
+    //         current_bufmsg.duration = 70;
+    //         current_bufmsg.text_font = &title_tf;
+    //     },
+    //     .match_end => {
+    //         current_bufmsg.text = "SIDE X WINS!".*;
+    //         current_bufmsg.duration = INF_DURATION;
+    //         current_bufmsg.text_font = &title_tf;
+    //     },
+    //     .to_title => {
+    //         current_bufmsg.text = "to title -->".*;
+    //         current_bufmsg.duration = INF_DURATION;
+    //         current_bufmsg.text_font = &normal_tf;
+    //     },
+    // }
 
     current_bufmsg.timer = 0;
 
     // if we take up a new slot in the ringbuffer,
     // existing active messages should shift upwards positionally (not in the ringbuffer idx).
     // the message in the last slot should fade out of existence.
+
+    var this_handle: u16 = handle;
+
     if(tookup_new_slot) {   
         current_bufmsg.is_active = true;
         for(&hover_display.message_ringbuffer) |*message| {
@@ -297,8 +345,12 @@ pub fn display_msg(msg: DisplayMessageType) void{
         current_bufmsg.y_target = @intToFloat(f16, hover_display.y_int);
         current_bufmsg.y = current_bufmsg.y_target + 20;
         current_bufmsg.y_int = @floatToInt(i32, current_bufmsg.y);
+
+        this_handle = hover_display.message_top_idx;
         hover_display.message_top_idx = @mod(hover_display.message_top_idx + 1, @intCast(u8, hover_display.effective_length));
     }
+
+    return this_handle;
 }
 
 fn shift_messages_prior_to(timestamp: u16) void {
