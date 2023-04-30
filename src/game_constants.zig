@@ -1,3 +1,5 @@
+const w4 = @import("wasm4.zig");
+
 pub const PADDLE_DIST_FROM_SIDES: u8 = 6;
 
 pub const PADDLE_ACCEL: f16 = 0.7;
@@ -8,8 +10,6 @@ pub const DAMPEN_BOUNCE: f16 = 0.95;
 pub const BALL_BOUNCEBACK_VX_MULT: f16 = 1.1;
 pub const PADDLE_TRANSFER_VY_MULT: f16 = 0.12;
 pub const BALL_MAX_VX: f16 = 5.5;
-
-pub const RESTART_FRAME_WAIT: u32 = 120;
 
 pub const CPU_TARGET_SPOT_TOL: f16 = 15;
 
@@ -61,11 +61,51 @@ pub const HOVER_DISPLAY_Y_DIST_BETWEEN_LINES = 10;
 
 pub const PADDLE_RANDOM_VY_MULT = 0.02;
 
-pub const VERSION = "v0.3.0";
+pub const VERSION = "v0.3.1";
 
 pub const BOOTUP_TIME = 50;
 
 pub const CURSOR_BLINK_DURATION = 20;
 
-pub const MATCH_WIN_COUNT = 3;
-pub const GAME_POINT_WIN_COUNT = 7;
+pub const MATCH_WIN_COUNT = 2;
+pub const GAME_POINT_WIN_COUNT = 5;
+
+pub const SIDE1_SCORE_X = 20;
+pub const SIDE2_SCORE_X = w4.SCREEN_SIZE - 16;
+
+pub const SIDE1_MATCH_X = 0;
+pub const SIDE2_MATCH_X = w4.SCREEN_SIZE - 16 - 20;
+
+// pub fn GameSetting(comptime T: type) type {
+//     return struct {
+//         label: [6]u8,
+//         current_v: T,
+//         possible_vs: [3]T,
+//         debug_only: bool,
+//     };
+// }
+
+// pub var matchcount = GameSetting(u8){
+//     .label = "#GAMES",
+//     .current_v = 2,
+//     .possible_vs = [3]u8{2, 3, 4},
+//     .debug_only = false,
+// };
+
+// pub var GameConstants = struct {
+
+// };
+
+pub const MAX_N_FOR_START_RALLY_COUNT = 5;
+
+pub const FLASH_PERCENT = 0.30;
+
+pub const N_DISPLAY_LINES_DURING_NORMAL_PLAY = 4;
+
+pub const INIT_MATCH_DURATION_MSEC = 120;
+
+pub const INIT_GAME_DURATION_MSEC = 70;
+
+pub const COUNTDOWN_DURATION_MSEC: u8 = 70;
+
+pub const ACTION_MSG_DURATION_MSEC = 50;

@@ -264,11 +264,10 @@ fn handle_ball_colliding_with_paddle(player: *Player) void {
             if (game_state == GameStates.main_game) {
                 switch (player.paddle.anim.current_state) {
                     .lunge => {
-                        // hd.display_msg(hd.DisplayMessageType.lunge);
-                        _ = hd.display_msg(hd.NOIDX, "Lunge!      ".*, 50, &hd.lunge_tf);
+                        _ = hd.display_msg(hd.NOIDX, "   Lunge!   ".*, gc.ACTION_MSG_DURATION_MSEC, &hd.lunge_tf);
                     },
                     .catchback => {
-                        _ = hd.display_msg(hd.NOIDX, "Catch!      ".*, 50, &hd.catchback_tf);
+                        _ = hd.display_msg(hd.NOIDX, "   Catch!   ".*, gc.ACTION_MSG_DURATION_MSEC, &hd.catchback_tf);
                     },
                     else => {},
                 }
@@ -279,11 +278,10 @@ fn handle_ball_colliding_with_paddle(player: *Player) void {
         pd.animate_paddle(player.paddle, player.current_dir_input, player.current_action_input, true);
         // no action messages on title sequence
         if (game_state == GameStates.main_game) {
-            // hd.display_msg(hd.DisplayMessageType.rally);
             rally_count += 1;
-            if (rally_count >= 5) {
+            if (rally_count >= gc.MAX_N_FOR_START_RALLY_COUNT) {
                 rally_handle = hd.display_msg(rally_handle, "   Rally X  ".*, hd.INF_DURATION, &hd.normal_tf);
-                _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[rally_handle].text[9..10], "{d}", .{rally_count}) catch undefined;
+                _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[rally_handle].text[9..12], "{d}", .{rally_count}) catch undefined;
             }
             
         }
@@ -427,22 +425,47 @@ fn draw_screen() void {
         var side2_score_buf: [2]u8 = .{ 0x0, 0x0 };
         _ = std.fmt.bufPrint(&side2_score_buf, "{d}", .{match.side2_game_score}) catch undefined;
 
-        if (round_state == SingleRoundState.someone_scored) {
-            if (@mod(round_timer / 2, 10) < 3) {
-                if (bl.ball.x < 60) {  
-                    w4.text(&side1_score_buf, 0, 0);
+        var side1_game_buf: [2]u8 = .{ 0x0, 0x0 };
+        _ = std.fmt.bufPrint(&side1_game_buf, "{d}", .{match.side1_match_score}) catch undefined;
+        var side2_game_buf: [2]u8 = .{ 0x0, 0x0 };
+        _ = std.fmt.bufPrint(&side2_game_buf, "{d}", .{match.side2_match_score}) catch undefined;
+
+
+
+        if (round_state == SingleRoundState.someone_won_game or round_state == SingleRoundState.someone_won_match) {
+            if (@mod(round_timer / 2, 10) < 10 * gc.FLASH_PERCENT) {
+                if (bl.ball.x < w4.SCREEN_SIZE / 2) {  
+                    w4.text(&side1_game_buf, gc.SIDE1_MATCH_X, 0);
                 } else {
-                    w4.text(&side2_score_buf, w4.SCREEN_SIZE - 16, 0);
+                    w4.text(&side2_game_buf, gc.SIDE2_MATCH_X, 0);
                 }
                 
             } else {
-                w4.text(&side1_score_buf, 0, 0);
-                w4.text(&side2_score_buf, w4.SCREEN_SIZE - 16, 0);
+                w4.text(&side1_game_buf, gc.SIDE1_MATCH_X, 0);
+                w4.text(&side2_game_buf, gc.SIDE2_MATCH_X, 0);
             }
 
         } else {
-            w4.text(&side1_score_buf, 0, 0);
-            w4.text(&side2_score_buf, w4.SCREEN_SIZE - 16, 0);
+            w4.text(&side1_game_buf, gc.SIDE1_MATCH_X, 0);
+            w4.text(&side2_game_buf, gc.SIDE2_MATCH_X, 0);
+        }
+
+        if (round_state == SingleRoundState.someone_scored) {
+            if (@mod(round_timer / 2, 10) < 10 * gc.FLASH_PERCENT) {
+                if (bl.ball.x < w4.SCREEN_SIZE / 2) {  
+                    w4.text(&side1_score_buf, gc.SIDE1_SCORE_X, 0);
+                } else {
+                    w4.text(&side2_score_buf, gc.SIDE2_SCORE_X, 0);
+                }
+                
+            } else {
+                w4.text(&side1_score_buf, gc.SIDE1_SCORE_X, 0);
+                w4.text(&side2_score_buf, gc.SIDE2_SCORE_X, 0);
+            }
+
+        } else {
+            w4.text(&side1_score_buf, gc.SIDE1_SCORE_X, 0);
+            w4.text(&side2_score_buf, gc.SIDE2_SCORE_X, 0);
         }
         
     }
@@ -532,16 +555,17 @@ export fn update() void {
             if (bootup_timer < gc.BOOTUP_TIME) {    
                 bootup_timer += 1;
             } else if (bootup_timer == gc.BOOTUP_TIME) {
+
                 reset_text_handles();
                 hd.reset_hover_display(4, true);
                 _ = hd.display_msg(hd.NOIDX, gc.GAME_NAME.* ++ "        ".*, hd.INF_DURATION, &hd.title_tf);
                 _ = hd.display_msg(hd.NOIDX, divide_line_text.*, hd.INF_DURATION, &hd.normal_tf);
                 _ = hd.display_msg(hd.NOIDX, "Play        ".*, hd.INF_DURATION, &hd.normal_tf);
                 _ = hd.display_msg(hd.NOIDX, "Options     ".*, hd.INF_DURATION, &hd.normal_tf);
-                // hd.display_msg(hd.DisplayMessageType.title_title);
-                // hd.display_msg(hd.DisplayMessageType.divider_line);
-                // hd.display_msg(hd.DisplayMessageType.title_play);
-                // hd.display_msg(hd.DisplayMessageType.title_options);
+
+                for (&players) |*player| {
+                    player.is_cpu_controlled = true;
+                }
 
                 bootup_timer += 1;
                 
@@ -553,15 +577,19 @@ export fn update() void {
 
                 var option_selected: u8 = get_menu_option();
 
+                const BEGIN_MATCH = 0;
+                const SEE_OPTIONS = 1;
+
+
                 switch (option_selected) {
-                    0 => {
+                    BEGIN_MATCH => {
                         players[0].is_cpu_controlled = false;
                         players[0].is_active = true;
                         game_state = GameStates.main_game;
                         round_state = SingleRoundState.init_match;
                         round_timer = 0;
                     },
-                    1 => {
+                    SEE_OPTIONS => {
                         game_state = GameStates.options;
                         options_timer = 0;
                     },
@@ -587,32 +615,35 @@ export fn update() void {
                 _ = hd.display_msg(hd.NOIDX, "Options     ".*, hd.INF_DURATION, &hd.title_tf);
                 _ = hd.display_msg(hd.NOIDX, divide_line_text.*, hd.INF_DURATION, &hd.normal_tf);
                 color_handle = hd.display_msg(hd.NOIDX, "Color (x/x) ".*, hd.INF_DURATION, &hd.normal_tf);
+
+                _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[7..8], "{d}", .{gr.pallete_idx + 1}) catch undefined;
+                _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[9..10], "{d}", .{gr.pallete_list.len}) catch undefined;
+                    
+
                 _ = hd.display_msg(hd.NOIDX, "About       ".*, hd.INF_DURATION, &hd.normal_tf);
                 _ = hd.display_msg(hd.NOIDX, back_text.*, hd.INF_DURATION, &hd.normal_tf);
-
-                // hd.display_msg(hd.DisplayMessageType.options_options);
-                // hd.display_msg(hd.DisplayMessageType.divider_line);
-                // hd.display_msg(hd.DisplayMessageType.options_pallete_rotate);
-                // hd.display_msg(hd.DisplayMessageType.options_about);
-                // hd.display_msg(hd.DisplayMessageType.back);
 
             } else {
                 hd.blink_cursor();
 
                 var option_selected: u8 = get_menu_option();
 
+                const CYCLE_COLORS = 0;
+                const SEE_ABOUT = 1;
+                const BACK = 2;
+
                 switch (option_selected) {
-                    0 => {
+                    CYCLE_COLORS => {
                         gr.pallete_idx = @mod(gr.pallete_idx + 1, @intCast(u16, gr.pallete_list.len));
                         w4.PALETTE.* = gr.pallete_list[gr.pallete_idx].*;
                         _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[7..8], "{d}", .{gr.pallete_idx + 1}) catch undefined;
                         _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[9..10], "{d}", .{gr.pallete_list.len}) catch undefined;
                     },
-                    1 => {
+                    SEE_ABOUT => {
                         game_state = GameStates.about;
                         options_timer = 0;
                     },
-                    2 => {
+                    BACK => {
                         game_state = GameStates.title_screen;
                         bootup_timer = gc.BOOTUP_TIME;
                     },
@@ -637,20 +668,15 @@ export fn update() void {
                 _ = hd.display_msg(hd.NOIDX, back_text.*, hd.INF_DURATION, &hd.normal_tf);
 
 
-                // hd.display_msg(hd.DisplayMessageType.about_about);
-                // hd.display_msg(hd.DisplayMessageType.divider_line);
-                // hd.display_msg(hd.DisplayMessageType.about_author_label);
-                // hd.display_msg(hd.DisplayMessageType.about_author);
-                // hd.display_msg(hd.DisplayMessageType.about_version);
-                // hd.display_msg(hd.DisplayMessageType.back);
-
             } else {
                 hd.blink_cursor();
 
                 var option_selected: u8 = get_menu_option();
 
+                const BACK = 3;
+
                 switch (option_selected) {
-                    3 => {
+                    BACK => {
                         game_state = GameStates.title_screen;
                         bootup_timer = gc.BOOTUP_TIME;
                     },
@@ -670,19 +696,21 @@ export fn update() void {
                     
                     if (round_timer == 0) {
                         match.num = 1;
+                        match.side1_match_score = 0;
+                        match.side2_match_score = 0;
                         reset_text_handles();
                         reset_and_start_new_round();
-                        hd.reset_hover_display(4, false);
-                        _ = hd.display_msg(hd.NOIDX, "Match Start!".*, 120, &hd.title_tf);
-                        var h1 = hd.display_msg(hd.NOIDX, "- best of X ".*, 120, &hd.normal_tf);
-                        var h2 = hd.display_msg(hd.NOIDX, "- play to X ".*, 120, &hd.normal_tf);
+                        hd.reset_hover_display(gc.N_DISPLAY_LINES_DURING_NORMAL_PLAY, false);
+                        _ = hd.display_msg(hd.NOIDX, "Match Start!".*, gc.INIT_MATCH_DURATION_MSEC, &hd.title_tf);
+                        var h1 = hd.display_msg(hd.NOIDX, "- best of X ".*, gc.INIT_MATCH_DURATION_MSEC, &hd.normal_tf);
+                        var h2 = hd.display_msg(hd.NOIDX, "- play to X ".*, gc.INIT_MATCH_DURATION_MSEC, &hd.normal_tf);
 
                         _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[h1].text[10..11], "{d}", .{gc.MATCH_WIN_COUNT * 2 - 1}) catch undefined;
                         _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[h2].text[10..11], "{d}", .{gc.GAME_POINT_WIN_COUNT}) catch undefined;
-                        // hd.display_msg(hd.DisplayMessageType.match_start);
+
                         round_timer += 1;
                     }
-                    else if(round_timer >= 120) {
+                    else if(round_timer >= gc.INIT_MATCH_DURATION_MSEC) {
                         round_state = SingleRoundState.init_game;
                         round_timer = 0;
                     } else {
@@ -692,15 +720,17 @@ export fn update() void {
                 .init_game => {
                     
                     if (round_timer == 0) {
+                        match.side1_game_score = 0;
+                        match.side2_game_score = 0;
                         reset_text_handles();
                         reset_and_start_new_round();
-                        hd.reset_hover_display(4, false);
-                        var handle = hd.display_msg(hd.NOIDX, "   GAME X   ".*, 50, &hd.title_tf);
+                        hd.reset_hover_display(gc.N_DISPLAY_LINES_DURING_NORMAL_PLAY, false);
+                        var handle = hd.display_msg(hd.NOIDX, "   GAME X   ".*, gc.INIT_GAME_DURATION_MSEC, &hd.title_tf);
                         _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[handle].text[8..9], "{d}", .{match.num}) catch undefined;
-                        // hd.display_msg(hd.DisplayMessageType.game_start);
+
                         round_timer += 1;
                     }
-                    else if(round_timer >= 70) {
+                    else if(round_timer >= gc.INIT_GAME_DURATION_MSEC) {
                         round_state = SingleRoundState.countdown;
                         round_timer = 0;
                     } else {
@@ -713,13 +743,13 @@ export fn update() void {
                         reset_text_handles();
                         reset_and_start_new_round();
                         round_timer += 1;
-                    } else if (round_timer < gc.RESTART_FRAME_WAIT) {
+                    } else if (round_timer < gc.COUNTDOWN_DURATION_MSEC) {
                         round_timer += 1;
-                        if (round_timer == 30 or round_timer == 60 or round_timer == 90 or round_timer == 120) {
-                            // hd.display_msg(hd.DisplayMessageType.starting);
+                        if (round_timer == gc.COUNTDOWN_DURATION_MSEC / 4 or round_timer == gc.COUNTDOWN_DURATION_MSEC / 2 or round_timer == gc.COUNTDOWN_DURATION_MSEC / 4 * 3 or round_timer == gc.COUNTDOWN_DURATION_MSEC) {
+
                             starting_handle = hd.display_msg(starting_handle, "Start in X..".*, 50, &hd.title_tf);
-                            _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[starting_handle].text[9..10], "{d}", .{@as(u8, (120 - @intCast(u8, round_timer)) / 30)}) catch undefined;
-                            if (round_timer == 120) {
+                            _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[starting_handle].text[9..10], "{d}", .{@as(u8, (gc.COUNTDOWN_DURATION_MSEC - @intCast(u8, round_timer)) / (gc.COUNTDOWN_DURATION_MSEC / 4))}) catch undefined;
+                            if (round_timer == gc.COUNTDOWN_DURATION_MSEC) {
                                 _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[starting_handle].text[0..12], "   Go!!!    ", .{}) catch undefined;
                             }
                         }
@@ -743,8 +773,7 @@ export fn update() void {
                             round_state = SingleRoundState.someone_won_game;
                             round_timer = 0;
                         } else {
-                            // hd.display_msg(hd.DisplayMessageType.point);   
-                            _ = hd.display_msg(hd.NOIDX, "POINT!      ".*, 60, &hd.title_tf);
+                            _ = hd.display_msg(hd.NOIDX, "   POINT!   ".*, 60, &hd.title_tf);
                             round_timer += 1;    
                         }  
                     } else if (round_timer < 70) {
@@ -761,12 +790,11 @@ export fn update() void {
                             match.did_side1_win = true;
                             round_state = SingleRoundState.someone_won_match;
                             round_timer = 0;
-                        } else if (match.side2_game_score >= gc.MATCH_WIN_COUNT) {
+                        } else if (match.side2_match_score >= gc.MATCH_WIN_COUNT) {
                             match.did_side1_win = false;
                             round_state = SingleRoundState.someone_won_match;
                             round_timer = 0;
                         } else {
-                            // hd.display_msg(hd.DisplayMessageType.game_end);   
                             _ = hd.display_msg(hd.NOIDX, "   GAME!    ".*,60, &hd.title_tf);
                             round_timer += 1;    
                         }  
@@ -782,9 +810,6 @@ export fn update() void {
                     if(round_timer == 0) {
                         hd.reset_hover_display(3, true);
                         match_win_handle = hd.display_msg(match_win_handle, "SIDE X WINS!".*, hd.INF_DURATION, &hd.title_tf);
-                        // hd.display_msg(hd.DisplayMessageType.match_end);
-                        // hd.display_msg(hd.DisplayMessageType.divider_line);
-                        // hd.display_msg(hd.DisplayMessageType.to_title);
                         round_timer += 1;
 
                         _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[0].text[5..6], "{d}", .{if (match.did_side1_win) @as(u8, 1) else @as(u8, 2)}) catch undefined;
@@ -812,7 +837,7 @@ export fn update() void {
                     if (round_timer == 0) {
                         reset_and_start_new_round();
                         round_timer += 1;
-                    } else if (round_timer < gc.RESTART_FRAME_WAIT) {
+                    } else if (round_timer < gc.COUNTDOWN_DURATION_MSEC) {
                         round_timer += 1;
                     } else {
                         round_state = SingleRoundState.playing;
