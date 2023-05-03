@@ -172,14 +172,21 @@ pub const neon_pallete: [4]u32 = .{
     0xFF007F, // ball/overlay/smoke: bright pink
 };
 
+// // Spring Bloom Palette:
+// pub const spring_bloom_pallete: [4]u32 = .{
+//     0xFFF5EE, // bg: light pink
+//     0xFFCAB1, // alt-text: medium pink-orange
+//     0xB6E3D8, // paddles: light blue-green
+//     0xA8DADC, // ball/overlay/smoke: medium blue-green
+// };
+
 // Spring Bloom Palette:
 pub const spring_bloom_pallete: [4]u32 = .{
-    0xFFF5EE, // bg: light pink
-    0xFFCAB1, // alt-text: medium pink-orange
-    0xB6E3D8, // paddles: light blue-green
-    0xA8DADC, // ball/overlay/smoke: medium blue-green
+    0xFFE5D5, // bg: light orange
+    0xFFA07A, // alt-text: medium orange-pink
+    0x5AC6AC, // paddles: bright blue-green
+    0x00B5AD, // ball/overlay/smoke: bright blue-green
 };
-
 
 // Electric City Palette:
 pub const electric_city_pallete: [4]u32 = .{
@@ -212,6 +219,7 @@ pub const minty_sunrise_pallete: [4]u32 = .{
     0x64DD17, // paddles: bright green
     0xFF69B4, // ball/overlay/smoke: bright pink
 };
+
 
 // Refined Grayscale Palette 3:
 pub const refined_grayscale_palette_3: [4]u32 = .{

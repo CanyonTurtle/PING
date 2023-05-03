@@ -39,7 +39,7 @@ pub fn updateCpuDecision(cpu: *CpuPlayer, paddle_center_x: f16, paddle_center_y:
 
             cpu.rand_decision_num = rnd.random().int(u8);
             
-            if (cpu.rand_decision_num < 240) {
+            if (@intToFloat(f16, cpu.rand_decision_num) / 255.0 < (1.0 - gc.current_difficulty.cpu_stalling_rate)) {
                 cpu.current_state = CpuState.go_towards_ball;
             } else {
                 cpu.current_state = CpuState.delay;

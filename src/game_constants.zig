@@ -61,13 +61,13 @@ pub const HOVER_DISPLAY_Y_DIST_BETWEEN_LINES = 10;
 
 pub const PADDLE_RANDOM_VY_MULT = 0.02;
 
-pub const VERSION = "v0.3.1";
+pub const VERSION = "v0.4.0";
 
 pub const BOOTUP_TIME = 50;
 
 pub const CURSOR_BLINK_DURATION = 20;
 
-pub const MATCH_WIN_COUNT = 2;
+pub const MATCH_WIN_COUNT = 3;
 pub const GAME_POINT_WIN_COUNT = 5;
 
 pub const SIDE1_SCORE_X = 20;
@@ -76,6 +76,13 @@ pub const SIDE2_SCORE_X = w4.SCREEN_SIZE - 16;
 pub const SIDE1_MATCH_X = 0;
 pub const SIDE2_MATCH_X = w4.SCREEN_SIZE - 16 - 20;
 
+pub const X_OFFSET_DURING_SCORE = 20;
+pub const Y_OFFSET_DURING_SCORE = 80;
+
+pub const MATCH_WIN_DURATION = 180;
+pub const GAME_WIN_DURATION = 70;
+pub const SWITCH_SIDES_DURATION = 110;
+pub const POINT_WIN_DURATION = 70;
 // pub fn GameSetting(comptime T: type) type {
 //     return struct {
 //         label: [6]u8,
@@ -109,3 +116,42 @@ pub const INIT_GAME_DURATION_MSEC = 70;
 pub const COUNTDOWN_DURATION_MSEC: u8 = 70;
 
 pub const ACTION_MSG_DURATION_MSEC = 50;
+
+pub const DifficultySettings = struct {
+    cpu_stalling_rate: f16,
+    ball_max_vx: f16,
+    difficulty_text: [4]u8,
+    paddle_max_vel: f16,
+};
+
+pub const easy = DifficultySettings {
+    .cpu_stalling_rate = 0.2,
+    .ball_max_vx = 4.0,
+    .difficulty_text = "EASY".*,
+    .paddle_max_vel = 3.0,
+};
+
+pub const medium = DifficultySettings {
+    .cpu_stalling_rate = 0.1,
+    .ball_max_vx = 4.5,
+    .difficulty_text = "MED.".*,
+    .paddle_max_vel = 4.0,
+};
+
+pub const hard = DifficultySettings {
+    .cpu_stalling_rate = 0.02,
+    .ball_max_vx = 5.5,
+    .difficulty_text = "HARD".*,
+    .paddle_max_vel = 4.5,
+};
+
+pub const xhard = DifficultySettings {
+    .cpu_stalling_rate = 0.01,
+    .ball_max_vx = 6.5,
+    .difficulty_text = "X-HD".*,
+    .paddle_max_vel = 5.0,
+};
+
+pub var current_difficulty: *const DifficultySettings = &medium;
+pub var difficulty_idx: u16 = 1;
+pub const difficulties = [_]*const DifficultySettings{&easy, &medium, &hard, &xhard};

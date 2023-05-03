@@ -113,10 +113,10 @@ pub fn update_paddle(paddle: *Paddle, dir: Paddle_dirs) void {
     }
 
     paddle.vy += paddle.ay;
-    if (paddle.vy < -1 * gc.PADDLE_MAX_VEL) {
-        paddle.vy = -1 * gc.PADDLE_MAX_VEL;
-    } else if (paddle.vy > gc.PADDLE_MAX_VEL) {
-        paddle.vy = gc.PADDLE_MAX_VEL;
+    if (paddle.vy < -1 * gc.current_difficulty.paddle_max_vel) {
+        paddle.vy = -1 * gc.current_difficulty.paddle_max_vel;
+    } else if (paddle.vy > gc.current_difficulty.paddle_max_vel) {
+        paddle.vy = gc.current_difficulty.paddle_max_vel;
     }
 
     paddle.y += paddle.vy;
