@@ -61,13 +61,13 @@ pub const HOVER_DISPLAY_Y_DIST_BETWEEN_LINES = 10;
 
 pub const PADDLE_RANDOM_VY_MULT = 0.02;
 
-pub const VERSION = "v0.4.0";
+pub const VERSION = "v0.4.1";
 
 pub const BOOTUP_TIME = 50;
 
 pub const CURSOR_BLINK_DURATION = 20;
 
-pub const MATCH_WIN_COUNT = 3;
+pub const MATCH_WIN_COUNT = 2;
 pub const GAME_POINT_WIN_COUNT = 5;
 
 pub const SIDE1_SCORE_X = 20;
