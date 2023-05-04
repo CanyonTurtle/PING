@@ -292,3 +292,49 @@ pub const ping_img = [528]u8{ 0xaa,0xaa,0xa5,0x0a,0xaa,0xaa,0xaa,0x9a,0xa4,0x00,
 
 // hover display
 pub const hover_display_draw_colors = 0x04;
+
+// lerp between RGB differences of colors by the ratio given
+pub fn transitionBetweenColors(color_a: u32, color_b: u32, rratio: f16) u32 {
+
+    const eps: f16 = 1e-4;
+    var ratio: f16 = rratio;
+    if (ratio >= 1 - eps) {
+        return color_b;
+    }
+
+    var start_r: u8 = @intCast(u8, color_a >> 16 & 0xff);
+    var start_g: u8 = @intCast(u8, color_a >> 8 & 0xff);
+    var start_b: u8 = @intCast(u8, color_a & 0xff);
+
+    var end_r: u8 = @intCast(u8, color_b >> 16 & 0xff);
+    var end_g: u8 = @intCast(u8, color_b >> 8 & 0xff);
+    var end_b: u8 = @intCast(u8, color_b & 0xff);
+
+    var finals = [3]u32{0,0,0};
+
+    for ([_][3]u8{[3]u8{start_r, end_r, 0}, [3]u8{start_g, end_g, 1}, [3]u8{start_b, end_b, 2}}) |colors| {
+        var start = colors[0];
+        var end = colors[1];
+        var idx = colors[2];
+        var diff: u8 = 0;
+        var final: u8 = 0;
+        if (start > end) {
+            diff = start - end;
+
+            final = start - @floatToInt(u8, @intToFloat(f16, diff) * ratio);
+        } else {
+            diff = end - start;
+            final = start + @floatToInt(u8, @intToFloat(f16, diff) * ratio);
+        }
+        
+        finals[idx] = final;
+    }
+
+    var final_color: u32 = 0;
+    final_color |= ((@intCast(u32, finals[0]) << 16) & 0xff0000);
+    final_color |= ((@intCast(u32, finals[1]) << 8) & 0x00ff00);
+    final_color |= (@intCast(u32, finals[2]) & 0x0000ff);
+
+    return final_color;
+
+}

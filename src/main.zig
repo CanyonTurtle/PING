@@ -8,14 +8,6 @@ const sm = @import("smoke.zig");
 const hd = @import("hover_display.zig");
 const cpus = @import("cpu_player.zig");
 
-var side1_score: i32 = 0;
-var side2_score: i32 = 0;
-var round_timer: u32 = 0;
-var is_cpu: bool = true;
-var framecount: u16 = 0;
-
-const N_PLAYERS = 4;
-
 const GameStates = enum {
     bootup,
     title_screen,
@@ -36,25 +28,23 @@ const SingleRoundState = enum {
 };
 
 const Match = struct {
-    num: u8,
-    side1_match_score: u8,
-    side1_game_score: u8,
-    side2_match_score: u8,
-    side2_game_score: u8,
-    did_side1_win: bool,
+    num: u8 = 1,
+    side1_match_score: u8 = 0,
+    side1_game_score: u8 = 0,
+    side2_match_score: u8 = 0,
+    side2_game_score: u8 = 0,
+    did_side1_win: bool = false,
 };
 
-var match = Match {
-    .num = 1,
-    .side1_match_score = 0,
-    .side1_game_score = 0,
-    .side2_match_score = 0,
-    .side2_game_score = 0,
-    .did_side1_win = false,
-};
+var match = Match {};
 
 var game_state: GameStates = GameStates.bootup;
 var round_state: SingleRoundState = SingleRoundState.init_game;
+var game_timer: u32 = 0;
+var round_timer: u32 = 0;
+
+var framecount: u16 = 0;
+
 
 const PlayerNum = enum { one, two, three, four };
 
@@ -74,70 +64,44 @@ const Player = struct {
     is_active: bool = false,
     which_side: pd.Side,
     which_gamepad: *const u8,
-    paddle: *pd.Paddle,
+    paddle: pd.Paddle = pd.init_paddle(.left),
     num: PlayerNum,
     cpu: cpus.CpuPlayer = cpus.defaultCpuPlayer,
 };
 
-var players: [4]Player = [4]Player{
+var players = [_]Player{
     Player{
         .is_active = true,
         .which_side = pd.Side.left,
         .which_gamepad = w4.GAMEPAD1,
-        .paddle = &pd.p1,
         .num = PlayerNum.one,
-        .cpu = cpus.defaultCpuPlayer,
     },
     Player{
-        .current_dir_input = pd.Paddle_dirs.no_move,
-        .current_action_input = pd.Paddle_button_action.none,
-        .is_cpu_controlled = true,
         .is_active = true,
         .which_side = pd.Side.right,
         .which_gamepad = w4.GAMEPAD2,
-        .paddle = &pd.p2,
         .num = PlayerNum.two,
-        .cpu = cpus.defaultCpuPlayer,
     },
     Player{
-        .current_dir_input = pd.Paddle_dirs.no_move,
-        .current_action_input = pd.Paddle_button_action.none,
-        .is_cpu_controlled = true,
-        .is_active = false,
         .which_side = pd.Side.left,
         .which_gamepad = w4.GAMEPAD3,
-        .paddle = &pd.p3,
         .num = PlayerNum.three,
-        .cpu = cpus.defaultCpuPlayer,
     },
     Player{
-        .current_dir_input = pd.Paddle_dirs.no_move,
-        .current_action_input = pd.Paddle_button_action.none,
-        .is_cpu_controlled = true,
-        .is_active = false,
         .which_side = pd.Side.right,
         .which_gamepad = w4.GAMEPAD4,
-        .paddle = &pd.p4,
         .num = PlayerNum.four,
-        .cpu = cpus.defaultCpuPlayer,
     },
 };
 
 fn set_paddle_positions_according_to_sides() void {
     for (&players) |*player| {
-        player.paddle.* = pd.init_paddle(player.which_side);
+        player.paddle = pd.init_paddle(player.which_side);
     }
 }
 
-var current_p1_dir: pd.Paddle_dirs = pd.Paddle_dirs.no_move;
-var current_p2_dir: pd.Paddle_dirs = pd.Paddle_dirs.no_move;
-
-var current_p1_action_input: pd.Paddle_button_action = pd.Paddle_button_action.none;
-var current_p2_action_input: pd.Paddle_button_action = pd.Paddle_button_action.none;
-
 fn is_colliding(ball: *bl.Ball, paddle: *const pd.Paddle) bool {
-    const ball_radius = gr.ball.width / 2;
-    _ = ball_radius;
+
     var ball_right_x = ball.x + @intToFloat(f16, gr.ball.width);
     var ball_bottom_y = ball.y + @intToFloat(f16, gr.ball.width);
 
@@ -158,8 +122,6 @@ fn is_colliding(ball: *bl.Ball, paddle: *const pd.Paddle) bool {
     }
     return false;
 }
-
-fn my_start() void {}
 
 fn center_paddle_y(y: f16) f16 {
     return y - @intToFloat(f16, gr.paddle.height) / 2;
@@ -183,10 +145,8 @@ fn get_paddle_start_y(player: *const Player) f16 {
     }
 }
 
-fn reset_and_start_new_round() void {
+fn reset_point() void {
 
-    // bl.ball.vx = 1.0;
-    // bl.ball.vy = 0.0;
     rally_count = 0;
     var rnd = std.rand.DefaultPrng.init(framecount);
     var rint: u16 = 0;
@@ -205,9 +165,9 @@ fn reset_and_start_new_round() void {
     bl.ball.x_int = @floatToInt(i32, bl.ball.x);
     bl.ball.y_int = @floatToInt(i32, bl.ball.y);
 
-    for (players) |player| {
+    for (&players) |*player| {
         player.paddle.y = pd.paddle_start_y - @intToFloat(f16, gr.paddle.height) / 2;
-        player.paddle.y = get_paddle_start_y(&player);
+        player.paddle.y = get_paddle_start_y(player);
         player.paddle.y_int = @floatToInt(i32, player.paddle.y);
     }
     // pd.p1.y = pd.paddle_start_y - @intToFloat(f16, gr.paddle.height) / 2;
@@ -224,6 +184,9 @@ fn reset_and_start_new_round() void {
     // w4.PALETTE.* = gr.pallete.*;
 }
 
+
+// text handles for the menu options
+// (we need these to persist between frames).
 var color_handle: u16 = hd.NOIDX;
 var starting_handle: u16 = hd.NOIDX;
 var rally_handle: u16 = hd.NOIDX;
@@ -242,11 +205,9 @@ pub fn reset_text_handles() void {
     match_len_handle = hd.NOIDX;
 }
 
-
-
 fn handle_ball_colliding_with_paddle(player: *Player) void {
     // ball off paddle physics
-    if (is_colliding(&bl.ball, player.paddle)) {
+    if (is_colliding(&bl.ball, &player.paddle)) {
 
         // add some rng to the y vel. for preventing standstills
         var rnd = std.rand.DefaultPrng.init(framecount);
@@ -283,7 +244,8 @@ fn handle_ball_colliding_with_paddle(player: *Player) void {
         }
 
         bl.ball.x += pd.side_mult(player.paddle.side) * (gc.PADDLE_BOUNCEBACK_DIST + 1);
-        pd.animate_paddle(player.paddle, player.current_dir_input, player.current_action_input, true);
+        pd.animate_paddle(&player.paddle, player.current_dir_input, player.current_action_input, true);
+
         // no action messages on title sequence
         if (game_state == GameStates.main_game) {
             rally_count += 1;
@@ -392,6 +354,7 @@ fn gamepad_input(player: *Player) void {
     }
 }
 
+// draws text with layers.
 fn draw_font(text: []const u8, x: i32, y: i32, font: *const hd.TextFont) void {
     if (font.tertiary != 0) {
         w4.DRAW_COLORS.* = font.tertiary;
@@ -491,19 +454,23 @@ fn draw_screen() void {
             
 
         }
-        
+        // else if (round_state == SingleRoundState.countdown or round_state == .init_game or round_state == .someone_won_game) {
+        //     for (&players) |player| {
+        //         if (player.is_active) {
+        //             var player_label: [2]u8 = "PX".*;
+        //             _ = std.fmt.bufPrint(player_label[1..2], "{d}", .{get_pnum_as_int(player.num)}) catch undefined;
+        //             w4.text(&player_label, player.paddle.x_int - 4, player.paddle.y_int - 10);
+        //         }
+        //     }
+        // }
     }
-
-    // w4.text(gc.VERSION, w4.SCREEN_SIZE - 8 * 5, w4.SCREEN_SIZE - 8);
 
     if (hd.hover_display.is_active) {
         for (&hd.hover_display.message_ringbuffer) |*message| {
             if (message.is_active) {
                 draw_font(&message.text, gc.HOVER_DISPLAY_X, message.y_int, message.text_font);
-                // w4.text(&message.text, gc.HOVER_DISPLAY_X, message.y_int);
             }
         }
-        // speed meter
 
     }
 
@@ -525,13 +492,14 @@ fn draw_screen() void {
     }
 }
 
-// handles moving the cursor,
-// and if a menu option is pressed,
-// it will return the new game state.
+
 var menu_input: u8 = 0;
 var prev_menu_input: u8 = 0;
 const MENU_NOTHING_SELECTED = 255;
 
+// handles moving the cursor,
+// and if a menu option is pressed,
+// it will return the new game state.
 fn get_menu_option() u8 {
     menu_input = w4.GAMEPAD1.*;
     var menu_input_this_frame: u8 = menu_input & (menu_input ^ prev_menu_input);
@@ -557,29 +525,51 @@ fn get_menu_option() u8 {
     // return GameStates.main_game;
 }
 
-var bootup_timer: u32 = 0;
-var options_timer: u32 = 0;
-
 const divide_line_text = "------------";
 const back_text = "<-- Back    ";
 
+const COLOR_CYCLE_DONE = 10000;
+var color_cycle_timer: u16 = 0;
+var last_color_idx: u16 = 0;
 
+// The game is expressed as as two concurrent state machines:
+// 1. the game state - whether we're on the title screen, playing, options screen, etc...
+// 2. the round state - which phase of a specific round of ping we're in.
+
+// If the game state is in the "main game" state, then the round state takes on its full
+// functionality. Otherwise, the round state is just the CPU paddles playing eachother endlessly.
+
+// Each state machine has a timer that is used to handle timing of entry / exit between states.
 export fn update() void {
     switch (game_state) {
         .bootup => {
             // The reason this is here is because of a
             // workaround to avoid https://github.com/aduros/wasm4/issues/542
-            w4.PALETTE.* = gr.pallete.*;
-
+            w4.PALETTE.* = [_]u32{0,0,0,0};// gr.pallete.*;
+            set_paddle_positions_according_to_sides();
             game_state = GameStates.title_screen;
             round_state = SingleRoundState.init_game;
             round_timer = 0;
         },
         .title_screen => {
-            if (bootup_timer < gc.BOOTUP_TIME) {    
-                bootup_timer += 1;
-            } else if (bootup_timer == gc.BOOTUP_TIME) {
 
+            if(color_cycle_timer <= 60) {
+                var rratio = @intToFloat(f16, color_cycle_timer) / 60;
+                w4.PALETTE.* = [4]u32{
+                    gr.transitionBetweenColors(0, gr.pallete_list[gr.pallete_idx][0], rratio),
+                    gr.transitionBetweenColors(0, gr.pallete_list[gr.pallete_idx][1], rratio),
+                    gr.transitionBetweenColors(0, gr.pallete_list[gr.pallete_idx][2], rratio),
+                    gr.transitionBetweenColors(0, gr.pallete_list[gr.pallete_idx][3], rratio),
+                };
+                color_cycle_timer += 1;
+            } else {
+                color_cycle_timer = COLOR_CYCLE_DONE;
+            }
+
+
+            if (game_timer < gc.BOOTUP_TIME) {    
+                game_timer += 1;
+            } else if (game_timer == gc.BOOTUP_TIME) {
                 reset_text_handles();
                 hd.reset_hover_display(4, true);
                 _ = hd.display_msg(hd.NOIDX, gc.GAME_NAME.* ++ "        ".*, hd.INF_DURATION, &hd.title_tf);
@@ -591,13 +581,17 @@ export fn update() void {
                     player.is_cpu_controlled = true;
                 }
 
-                bootup_timer += 1;
+                game_timer += 1;
                 
-            } else if (bootup_timer > gc.BOOTUP_TIME and bootup_timer < gc.BOOTUP_TIME + 30) {
-                bootup_timer += 1;
+            } else if (game_timer > gc.BOOTUP_TIME and game_timer < gc.BOOTUP_TIME + 30) {
+                game_timer += 1;
                 // mu.start_song(&mu.song_1);
             } else {
+                game_timer += 1;
                 hd.blink_cursor();
+                
+
+                
 
                 var option_selected: u8 = get_menu_option();
 
@@ -615,7 +609,7 @@ export fn update() void {
                     },
                     SEE_OPTIONS => {
                         game_state = GameStates.options;
-                        options_timer = 0;
+                        game_timer = 0;
                     },
                     else => {
                         
@@ -632,19 +626,20 @@ export fn update() void {
             }
         },
         .options => {  
-            if (options_timer == 0) {
+            if (game_timer == 0) {
                 reset_text_handles();
-                options_timer += 1;
+                game_timer += 1;
                 hd.reset_hover_display(7, true);
                 _ = hd.display_msg(hd.NOIDX, "Options     ".*, hd.INF_DURATION, &hd.title_tf);
                 _ = hd.display_msg(hd.NOIDX, divide_line_text.*, hd.INF_DURATION, &hd.normal_tf);
-                // color_handle = hd.display_msg(hd.NOIDX, "Color (x/x) ".*, hd.INF_DURATION, &hd.normal_tf);
 
+                // one-digit version
+                // color_handle = hd.display_msg(hd.NOIDX, "Color (x/x) ".*, hd.INF_DURATION, &hd.normal_tf);
                 // _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[7..8], "{d}", .{gr.pallete_idx + 1}) catch undefined;
                 // _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[9..10], "{d}", .{gr.pallete_list.len}) catch undefined;
 
+                // double-digit version
                 color_handle = hd.display_msg(hd.NOIDX, "Color:   /  ".*, hd.INF_DURATION, &hd.normal_tf);
-
                 _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[7..9], "{d}", .{gr.pallete_idx + 1}) catch undefined;
                 _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[10..12], "{d}", .{gr.pallete_list.len}) catch undefined;
         
@@ -670,14 +665,29 @@ export fn update() void {
                 const SEE_ABOUT = 3;
                 const BACK = 4;
 
+                // a little gimmick to smoothly transition between color palettes.
+                if (color_cycle_timer <= 5) {
+
+                    var rratio = @intToFloat(f16, color_cycle_timer) / 5;
+                    w4.PALETTE.* = [4]u32{
+                        gr.transitionBetweenColors(gr.pallete_list[last_color_idx][0], gr.pallete_list[gr.pallete_idx][0], rratio),
+                        gr.transitionBetweenColors(gr.pallete_list[last_color_idx][1], gr.pallete_list[gr.pallete_idx][1], rratio),
+                        gr.transitionBetweenColors(gr.pallete_list[last_color_idx][2], gr.pallete_list[gr.pallete_idx][2], rratio),
+                        gr.transitionBetweenColors(gr.pallete_list[last_color_idx][3], gr.pallete_list[gr.pallete_idx][3], rratio),
+                    };
+                    color_cycle_timer += 1;
+                } else {
+                    color_cycle_timer = COLOR_CYCLE_DONE;
+                }
                 switch (option_selected) {
                     CYCLE_COLORS => {
+                        last_color_idx = gr.pallete_idx;
                         gr.pallete_idx = @mod(gr.pallete_idx + 1, @intCast(u16, gr.pallete_list.len));
-                        w4.PALETTE.* = gr.pallete_list[gr.pallete_idx];
+                        // w4.PALETTE.* = gr.pallete_list[gr.pallete_idx];
                         _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[7..9], "  ", .{}) catch undefined;
                         _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[7..9], "{d}", .{gr.pallete_idx + 1}) catch undefined;
                         _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[10..12], "{d}", .{gr.pallete_list.len}) catch undefined;
-        
+                        color_cycle_timer = 0;
                     },
                     CYCLE_DIFFICULTY_LEVEL => {
                         gc.difficulty_idx = @mod(gc.difficulty_idx + 1, @intCast(u16, gc.difficulties.len));
@@ -691,11 +701,11 @@ export fn update() void {
                     },
                     SEE_ABOUT => {
                         game_state = GameStates.about;
-                        options_timer = 0;
+                        game_timer = 0;
                     },
                     BACK => {
                         game_state = GameStates.title_screen;
-                        bootup_timer = gc.BOOTUP_TIME;
+                        game_timer = gc.BOOTUP_TIME;
                     },
                     else => {
                         
@@ -704,9 +714,9 @@ export fn update() void {
             }
         },
         .about => {   
-            if (options_timer == 0) {
+            if (game_timer == 0) {
                 reset_text_handles();
-                options_timer += 1;
+                game_timer += 1;
                 hd.reset_hover_display(7, true);
 
                 _ = hd.display_msg(hd.NOIDX, "About       ".*, hd.INF_DURATION, &hd.title_tf);
@@ -726,7 +736,7 @@ export fn update() void {
                 switch (option_selected) {
                     BACK => {
                         game_state = GameStates.title_screen;
-                        bootup_timer = gc.BOOTUP_TIME;
+                        game_timer = gc.BOOTUP_TIME;
                     },
                     else => {
                         
@@ -749,7 +759,7 @@ export fn update() void {
                         match.side1_game_score = 0;
                         match.side2_game_score = 0;
                         reset_text_handles();
-                        reset_and_start_new_round();
+                        reset_point();
                         hd.reset_hover_display(gc.N_DISPLAY_LINES_DURING_NORMAL_PLAY, false);
                         _ = hd.display_msg(hd.NOIDX, "Match Start!".*, gc.INIT_MATCH_DURATION_MSEC, &hd.title_tf);
                         var h1 = hd.display_msg(hd.NOIDX, "- best of X ".*, gc.INIT_MATCH_DURATION_MSEC, &hd.normal_tf);
@@ -773,7 +783,7 @@ export fn update() void {
                         match.side1_game_score = 0;
                         match.side2_game_score = 0;
                         reset_text_handles();
-                        reset_and_start_new_round();
+                        reset_point();
                         hd.reset_hover_display(gc.N_DISPLAY_LINES_DURING_NORMAL_PLAY, false);
                         var handle = hd.display_msg(hd.NOIDX, "   GAME X   ".*, gc.INIT_GAME_DURATION_MSEC, &hd.title_tf);
                         _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[handle].text[8..9], "{d}", .{match.num}) catch undefined;
@@ -791,7 +801,7 @@ export fn update() void {
                     
                     if (round_timer == 0) {
                         reset_text_handles();
-                        reset_and_start_new_round();
+                        reset_point();
                         round_timer += 1;
                     } else if (round_timer < gc.COUNTDOWN_DURATION_MSEC) {
                         round_timer += 1;
@@ -873,7 +883,7 @@ export fn update() void {
                         set_paddle_positions_according_to_sides();
                                                 
                         reset_text_handles();
-                        reset_and_start_new_round();
+                        reset_point();
                         hd.reset_hover_display(4, false);
                         _ = hd.display_msg(hd.NOIDX, "SWITCH SIDES".*, hd.INF_DURATION, &hd.normal_tf);
                         _ = hd.display_msg(hd.NOIDX, "<--      -->".*, hd.INF_DURATION, &hd.normal_tf);
@@ -910,7 +920,7 @@ export fn update() void {
                         // round_timer = 0;
                         // round_state = SingleRoundState.init_game;
                         game_state = GameStates.title_screen;
-                        bootup_timer = gc.BOOTUP_TIME;
+                        game_timer = gc.BOOTUP_TIME;
                     } 
                 }   
             }
@@ -924,7 +934,7 @@ export fn update() void {
                 },
                 .countdown => {
                     if (round_timer == 0) {
-                        reset_and_start_new_round();
+                        reset_point();
                         round_timer += 1;
                     } else if (round_timer < gc.COUNTDOWN_DURATION_MSEC) {
                         round_timer += 1;
@@ -951,8 +961,8 @@ export fn update() void {
     for (&players) |*player| {
         if (player.is_active) {
             gamepad_input(player);
-            pd.update_paddle(player.paddle, player.current_dir_input);
-            pd.animate_paddle(player.paddle, player.current_dir_input, player.current_action_input, false);
+            pd.update_paddle(&player.paddle, player.current_dir_input);
+            pd.animate_paddle(&player.paddle, player.current_dir_input, player.current_action_input, false);
         }
     }
 

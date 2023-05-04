@@ -59,9 +59,14 @@ pub const Paddle = struct {
     x_int: i32,
     y_int: i32,
     y: f16,
-    vy: f16,
-    ay: f16,
-    anim: Paddle_Anim,
+    vy: f16 = 0,
+    ay: f16 = 0,
+    anim: Paddle_Anim = Paddle_Anim{
+        .current_state = Paddle_states.normal,
+        .current_sprite_data = &gr.paddle,
+        .current_image = &gr.paddle_image,
+        .anim_timer = 0,
+    },
     side: Side,
 };
 
@@ -90,11 +95,6 @@ pub fn init_paddle(side: Side) Paddle {
         .side = side,
     };
 }
-
-pub var p1 = init_paddle(Side.left);
-pub var p2 = init_paddle(Side.right);
-pub var p3 = init_paddle(Side.left);
-pub var p4 = init_paddle(Side.right);
 
 pub const Paddle_dirs = enum { up, down, no_move };
 
@@ -133,8 +133,8 @@ pub fn update_paddle(paddle: *Paddle, dir: Paddle_dirs) void {
     paddle.x_int = @floatToInt(i32, paddle.x);
 }
 
+// The paddles are controlled by a small state machine.
 pub fn animate_paddle(paddle: *Paddle, dir: Paddle_dirs, button_action: Paddle_button_action, got_hit: bool) void {
-    // small state machine for this
     if (got_hit) {
         switch (paddle.anim.current_state) {
             // lunge doesn't get hit back.
