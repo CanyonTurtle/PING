@@ -148,94 +148,113 @@ pub const ball = Sprite_Metadata{
     .draw_colors = 0x40,
 };
 
-// alltime
-pub const alltime_pallete: [4]u32 = .{
-    0x95E1D3, // bg: light blue
-    0xFCE38A, // alt-text: light yellow
-    0xF38181, // paddles: medium red
-    0xEAFFD0, // ball/overlay/smoke: white
-};
-
-// Alltime Palette (Variant):
-pub const alltime_variant_pallete: [4]u32 = .{
-    0xB6DCE6, // bg: light blue
-    0xFCE38A, // alt-text: light yellow
-    0x8CD17D, // paddles: medium green
-    0xFFFFF2, // ball/overlay/smoke: very light yellow with a hint of green
-};
-
-// Neon Palette:
-pub const neon_pallete: [4]u32 = .{
-    0x20002C, // bg: dark purple
-    0xFFEA3C, // alt-text: bright yellow
-    0x00E0FF, // paddles: bright blue
-    0xFF007F, // ball/overlay/smoke: bright pink
-};
-
-// // Spring Bloom Palette:
-// pub const spring_bloom_pallete: [4]u32 = .{
-//     0xFFF5EE, // bg: light pink
-//     0xFFCAB1, // alt-text: medium pink-orange
-//     0xB6E3D8, // paddles: light blue-green
-//     0xA8DADC, // ball/overlay/smoke: medium blue-green
-// };
-
-// Spring Bloom Palette:
-pub const spring_bloom_pallete: [4]u32 = .{
-    0xFFE5D5, // bg: light orange
-    0xFFA07A, // alt-text: medium orange-pink
-    0x5AC6AC, // paddles: bright blue-green
-    0x00B5AD, // ball/overlay/smoke: bright blue-green
-};
-
-// Electric City Palette:
-pub const electric_city_pallete: [4]u32 = .{
-    0x03045E, // bg: dark blue
-    0xFFD369, // alt-text: bright yellow-orange
-    0x29ABE2, // paddles: bright blue
-    0xFF2E63, // ball/overlay/smoke: bright pink
-};
-
-// Darkened Sunrise Bliss Palette:
-pub const darkened_sunrise_bliss_pallete: [4]u32 = .{
-    0xFFE3D3, // bg: light orange
-    0xFFBAA1, // alt-text: dark pink-orange
-    0xE55C6D, // paddles: dark pink
-    0xD3826B, // ball/overlay/smoke: dark orange
-};
-
-// Forest Walk Palette:
-pub const forest_walk_pallete: [4]u32 = .{
-    0xF5F5F5, // bg: light gray
-    0x5F5B5B, // alt-text: dark brown-gray
-    0x9BC8A9, // paddles: light green
-    0xE16639, // ball/overlay/smoke: bright orange
-};
-
-// Minty Sunrise Palette:
-pub const minty_sunrise_pallete: [4]u32 = .{
-    0xFFF8E7, // bg: light yellow
-    0xE6B39A, // alt-text: medium orange-pink
-    0x64DD17, // paddles: bright green
-    0xFF69B4, // ball/overlay/smoke: bright pink
-};
-
-
-// Refined Grayscale Palette 3:
-pub const refined_grayscale_palette_3: [4]u32 = .{
-    0x212529, // bg: black
-    0xD4D4D4, // alt-text: dark gray
-    0x6C757D, // paddles: medium gray
-    0xF8F9FA, // ball/overlay/smoke: light gray
-};
-
-pub var pallete: *const [4]u32 = &alltime_pallete;
 
 pub var pallete_idx: u16 = 0;
-pub const pallete_list = [_]*const[4]u32{
-    &alltime_pallete, &alltime_variant_pallete, &minty_sunrise_pallete,&electric_city_pallete,&forest_walk_pallete,&neon_pallete, &refined_grayscale_palette_3,&spring_bloom_pallete,&darkened_sunrise_bliss_pallete
+
+pub const pallete_list = [_][4]u32{
+
+    // alltime
+    [4]u32{
+        0x95E1D3, // bg: light blue
+        0xFCE38A, // alt-text: light yellow
+        0xF38181, // paddles: medium red
+        0xEAFFD0, // ball/overlay/smoke: white
+    },
+
+
+    // Alltime Variant:
+    [4]u32{
+        0xB6DCE6, // bg: light blue
+        0xFCE38A, // alt-text: light yellow
+        0x8CD17D, // paddles: medium green
+        0xFFFFF2, // ball/overlay/smoke: very light yellow with a hint of green
+    },
+
+    // Spring Bloom Palette:
+    [4]u32{
+        0xFFE5D5, // bg: light orange
+        0xFFA07A, // alt-text: medium orange-pink
+        0x5AC6AC, // paddles: bright blue-green
+        0x00B5AD, // ball/overlay/smoke: bright blue-green
+    },
+
+
+    // Darkened Sunrise Bliss Palette:
+    [4]u32{
+        0xFFE3D3, // bg: light orange
+        0xFFBAA1, // alt-text: dark pink-orange
+        0xE55C6D, // paddles: dark pink
+        0xD3826B, // ball/overlay/smoke: dark orange
+    },
+
+    // Forest Walk Palette:
+    [4]u32{
+        0xF5F5F5, // bg: light gray
+        0x5F5B5B, // alt-text: dark brown-gray
+        0x9BC8A9, // paddles: light green
+        0xE16639, // ball/overlay/smoke: bright orange
+    },
+
+    // another minty
+    [4]u32{
+        0xFDF6E3, // bg: off-white
+        0xF2A599, // alt-text: light peach
+        0x76B947, // paddles: soft green
+        0xFF87A0, // ball/overlay/smoke: medium pink
+    },
+
+
+    // pinky-alt
+    [4]u32{
+    0xE1D4E9, // bg: pale purple
+    0xFCE38A, // alt-text: pale yellow
+    0xF38181, // paddles: medium red
+    0x5C657D, // ball/overlay/smoke: dark blue-gray
+    },
+
+    // olive
+    [4]u32{
+        0xF2E9E4, // bg: soft off-white
+        0xE58B6F, // alt-text: light red-orange
+        0x9ECCCC, // paddles: soft blue-green
+        0xC1D37F, // ball/overlay/smoke: soft yellow-green
+    },
+
+    // orange to turquoise gradient palette
+    [4]u32{
+        0xFFD8B8, // bg: soft light orange
+        0xA3D8C9, // alt-text: light greenish-blue
+        0x4CB5F5, // paddles: bright blue
+        0x336E84, // ball/overlay/smoke: deep greenish-blue
+    },
+
+    // Electric City Palette:
+    [4]u32{
+        0x03045E, // bg: dark blue
+        0xFFD369, // alt-text: bright yellow-orange
+        0x29ABE2, // paddles: bright blue
+        0xFF2E63, // ball/overlay/smoke: bright pink
+    },
+
+    // Neon Palette:
+    [4]u32{
+        0x20002C, // bg: dark purple
+        0xFFEA3C, // alt-text: bright yellow
+        0x00E0FF, // paddles: bright blue
+        0xFF007F, // ball/overlay/smoke: bright pink
+    },
+
+    // Refined Grayscale Palette 3:
+    [4]u32{
+        0x212529, // bg: black
+        0xD4D4D4, // alt-text: dark gray
+        0x6C757D, // paddles: medium gray
+        0xF8F9FA, // ball/overlay/smoke: light gray
+    },
+
 };
 
+pub var pallete: *const [4]u32 = &pallete_list[0];
 
 //0x0b3866, // deep intense blue
 

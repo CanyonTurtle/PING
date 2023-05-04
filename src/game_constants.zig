@@ -61,7 +61,7 @@ pub const HOVER_DISPLAY_Y_DIST_BETWEEN_LINES = 10;
 
 pub const PADDLE_RANDOM_VY_MULT = 0.02;
 
-pub const VERSION = "v0.4.1";
+pub const VERSION = "v0.5.0";
 
 pub const BOOTUP_TIME = 50;
 
@@ -151,6 +151,37 @@ pub const xhard = DifficultySettings {
     .difficulty_text = "X-HD".*,
     .paddle_max_vel = 5.0,
 };
+
+pub const MatchCountSettings = struct {
+    match_win_count: u8,
+    game_point_win_count: u8,
+    label: [5]u8,
+};
+
+pub const match_count_settings = [_]MatchCountSettings {
+    .{
+        .match_win_count = 2,
+        .game_point_win_count = 3,
+        .label = "QUICK".*,
+    },
+    .{
+        .match_win_count = 2,
+        .game_point_win_count = 5,
+        .label = "NORM.".*,
+    },
+    .{
+        .match_win_count = 3,
+        .game_point_win_count = 7,
+        .label = "LONG ".*,
+    },
+    .{
+        .match_win_count = 1,
+        .game_point_win_count = 21,
+        .label = "TO 21".*,
+    },
+};
+
+pub var current_match_count_idx: u16 = 1;
 
 pub var current_difficulty: *const DifficultySettings = &medium;
 pub var difficulty_idx: u16 = 1;

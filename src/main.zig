@@ -229,6 +229,7 @@ var starting_handle: u16 = hd.NOIDX;
 var rally_handle: u16 = hd.NOIDX;
 var match_win_handle: u16 = hd.NOIDX;
 var difficulty_handle: u16 = hd.NOIDX;
+var match_len_handle: u16 = hd.NOIDX;
 
 var rally_count: u16 = 0;
 
@@ -238,6 +239,7 @@ pub fn reset_text_handles() void {
     rally_handle = hd.NOIDX;
     match_win_handle = hd.NOIDX;
     difficulty_handle = hd.NOIDX;
+    match_len_handle = hd.NOIDX;
 }
 
 
@@ -633,17 +635,27 @@ export fn update() void {
             if (options_timer == 0) {
                 reset_text_handles();
                 options_timer += 1;
-                hd.reset_hover_display(6, true);
+                hd.reset_hover_display(7, true);
                 _ = hd.display_msg(hd.NOIDX, "Options     ".*, hd.INF_DURATION, &hd.title_tf);
                 _ = hd.display_msg(hd.NOIDX, divide_line_text.*, hd.INF_DURATION, &hd.normal_tf);
-                color_handle = hd.display_msg(hd.NOIDX, "Color (x/x) ".*, hd.INF_DURATION, &hd.normal_tf);
+                // color_handle = hd.display_msg(hd.NOIDX, "Color (x/x) ".*, hd.INF_DURATION, &hd.normal_tf);
 
-                _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[7..8], "{d}", .{gr.pallete_idx + 1}) catch undefined;
-                _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[9..10], "{d}", .{gr.pallete_list.len}) catch undefined;
-                    
+                // _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[7..8], "{d}", .{gr.pallete_idx + 1}) catch undefined;
+                // _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[9..10], "{d}", .{gr.pallete_list.len}) catch undefined;
+
+                color_handle = hd.display_msg(hd.NOIDX, "Color:   /  ".*, hd.INF_DURATION, &hd.normal_tf);
+
+                _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[7..9], "{d}", .{gr.pallete_idx + 1}) catch undefined;
+                _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[10..12], "{d}", .{gr.pallete_list.len}) catch undefined;
+        
+
                 difficulty_handle = hd.display_msg(hd.NOIDX, "Level: XXXX ".*, hd.INF_DURATION, &hd.normal_tf);
                 _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[difficulty_handle].text[7..11], "{s}", .{gc.current_difficulty.difficulty_text}) catch undefined;
                   
+                match_len_handle = hd.display_msg(hd.NOIDX, "Match: XXXXX".*, hd.INF_DURATION, &hd.normal_tf);
+                _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[match_len_handle].text[7..12], "{s}", .{gc.match_count_settings[gc.current_match_count_idx].label}) catch undefined;
+                 
+
                 _ = hd.display_msg(hd.NOIDX, "About       ".*, hd.INF_DURATION, &hd.normal_tf);
                 _ = hd.display_msg(hd.NOIDX, back_text.*, hd.INF_DURATION, &hd.normal_tf);
 
@@ -654,21 +666,28 @@ export fn update() void {
 
                 const CYCLE_COLORS = 0;
                 const CYCLE_DIFFICULTY_LEVEL = 1;
-                const SEE_ABOUT = 2;
-                const BACK = 3;
+                const CYCLE_MATCH_LEN = 2;
+                const SEE_ABOUT = 3;
+                const BACK = 4;
 
                 switch (option_selected) {
                     CYCLE_COLORS => {
                         gr.pallete_idx = @mod(gr.pallete_idx + 1, @intCast(u16, gr.pallete_list.len));
-                        w4.PALETTE.* = gr.pallete_list[gr.pallete_idx].*;
-                        _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[7..8], "{d}", .{gr.pallete_idx + 1}) catch undefined;
-                        _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[9..10], "{d}", .{gr.pallete_list.len}) catch undefined;
+                        w4.PALETTE.* = gr.pallete_list[gr.pallete_idx];
+                        _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[7..9], "  ", .{}) catch undefined;
+                        _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[7..9], "{d}", .{gr.pallete_idx + 1}) catch undefined;
+                        _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[color_handle].text[10..12], "{d}", .{gr.pallete_list.len}) catch undefined;
+        
                     },
                     CYCLE_DIFFICULTY_LEVEL => {
                         gc.difficulty_idx = @mod(gc.difficulty_idx + 1, @intCast(u16, gc.difficulties.len));
                         gc.current_difficulty = gc.difficulties[gc.difficulty_idx];
 
                         _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[difficulty_handle].text[7..11], "{s}", .{gc.current_difficulty.difficulty_text}) catch undefined;
+                    },
+                    CYCLE_MATCH_LEN => {
+                        gc.current_match_count_idx = @mod(gc.current_match_count_idx + 1, @intCast(u16, gc.match_count_settings.len));
+                        _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[match_len_handle].text[7..12], "{s}", .{gc.match_count_settings[gc.current_match_count_idx].label}) catch undefined;
                     },
                     SEE_ABOUT => {
                         game_state = GameStates.about;
@@ -736,8 +755,8 @@ export fn update() void {
                         var h1 = hd.display_msg(hd.NOIDX, "- best of X ".*, gc.INIT_MATCH_DURATION_MSEC, &hd.normal_tf);
                         var h2 = hd.display_msg(hd.NOIDX, "- play to X ".*, gc.INIT_MATCH_DURATION_MSEC, &hd.normal_tf);
 
-                        _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[h1].text[10..11], "{d}", .{gc.MATCH_WIN_COUNT * 2 - 1}) catch undefined;
-                        _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[h2].text[10..11], "{d}", .{gc.GAME_POINT_WIN_COUNT}) catch undefined;
+                        _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[h1].text[10..12], "{d}", .{gc.match_count_settings[gc.current_match_count_idx].match_win_count * 2 - 1}) catch undefined;
+                        _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[h2].text[10..12], "{d}", .{gc.match_count_settings[gc.current_match_count_idx].game_point_win_count}) catch undefined;
 
                         round_timer += 1;
                     }
@@ -795,11 +814,11 @@ export fn update() void {
                 // when a score is detected, we will transition to here
                 .someone_scored => {
                     if(round_timer == 0) {
-                        if (match.side1_game_score >= gc.GAME_POINT_WIN_COUNT) {
+                        if (match.side1_game_score >= gc.match_count_settings[gc.current_match_count_idx].game_point_win_count) {
                             match.side1_match_score += 1;
                             round_state = SingleRoundState.someone_won_game;
                             round_timer = 0;
-                        } else if (match.side2_game_score >= gc.GAME_POINT_WIN_COUNT) {
+                        } else if (match.side2_game_score >= gc.match_count_settings[gc.current_match_count_idx].game_point_win_count) {
                             match.side2_match_score += 1;
                             round_state = SingleRoundState.someone_won_game;
                             round_timer = 0;
@@ -817,11 +836,11 @@ export fn update() void {
                 .someone_won_game => {
                     if(round_timer == 0) {
                         match.num += 1;
-                        if (match.side1_match_score >= gc.MATCH_WIN_COUNT) {
+                        if (match.side1_match_score >= gc.match_count_settings[gc.current_match_count_idx].match_win_count) {
                             match.did_side1_win = true;
                             round_state = SingleRoundState.someone_won_match;
                             round_timer = 0;
-                        } else if (match.side2_match_score >= gc.MATCH_WIN_COUNT) {
+                        } else if (match.side2_match_score >= gc.match_count_settings[gc.current_match_count_idx].match_win_count) {
                             match.did_side1_win = false;
                             round_state = SingleRoundState.someone_won_match;
                             round_timer = 0;
@@ -843,6 +862,14 @@ export fn update() void {
                         for(&players) |*player| {
                             player.which_side = if(player.which_side == pd.Side.left) pd.Side.right else pd.Side.left;
                         }
+
+                        var temp = match.side1_match_score;
+                        match.side1_match_score = match.side2_match_score;
+                        match.side2_match_score = temp;
+
+                        match.side1_game_score = 0;
+                        match.side2_game_score = 0;
+
                         set_paddle_positions_according_to_sides();
                                                 
                         reset_text_handles();
@@ -866,9 +893,15 @@ export fn update() void {
                     if(round_timer == 0) {
                         hd.reset_hover_display(3, false);
                         match_win_handle = hd.display_msg(match_win_handle, "SIDE X WINS!".*, hd.INF_DURATION, &hd.title_tf);
+                        var arrow_text = "   <--      ".*;
+                        if (match.side1_match_score < match.side2_match_score) {
+                            arrow_text = "      -->   ".*;
+                        }
+                         _ = hd.display_msg(hd.NOIDX, arrow_text, hd.INF_DURATION, &hd.title_tf);
+                        
                         round_timer += 1;
 
-                        _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[0].text[5..6], "{d}", .{if (match.did_side1_win) @as(u8, 1) else @as(u8, 2)}) catch undefined;
+                        _ = std.fmt.bufPrint(hd.hover_display.message_ringbuffer[match_win_handle].text[5..6], "{d}", .{if (match.did_side1_win) @as(u8, 1) else @as(u8, 2)}) catch undefined;
 
 
                     } else if (round_timer < gc.MATCH_WIN_DURATION) {

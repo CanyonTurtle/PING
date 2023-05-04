@@ -1,4 +1,6 @@
-# hello-world
+# PING
+
+![image](ping.png)
 
 A game written in Zig for the [WASM-4](https://wasm4.org) fantasy console.
 
